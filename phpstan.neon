@@ -30,6 +30,14 @@ parameters:
 
     ignoreErrors:
         - identifier: expr.resultUnused
+        -
+            # Pest's expect()/->and() chains lean on generics and __get proxying
+            # that static analysis can't always resolve (e.g. asserting on a
+            # dynamic Eloquent pivot property) — not indicative of a real bug.
+            identifiers:
+                - property.notFound
+                - argument.templateType
+            path: tests/*
 
     scanFiles:
         - vendor/laravel/framework/src/Illuminate/Foundation/helpers.php

@@ -41,6 +41,6 @@ code sets (dry-run only — never auto-apply without reviewing the diff). Pre-co
 
 ## Git
 
-`master` mirrors production. Work happens on `local` day-to-day. Feature branches (if
-ever needed for parallel work) branch off `local`. See global git workflow skill for
-cherry-pick/rebase details.
+Single-branch: `main`. This project intentionally opts out of the global master/local
+branch model (see `~/.claude/CLAUDE.md`) — there's no separate production deployment to
+mirror, so work happens directly on `main`. Repo: `loki495/homie` on GitHub (public).

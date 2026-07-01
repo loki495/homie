@@ -88,6 +88,37 @@ it('prefers the traefik host label over the raw ip:port when discovering via the
     expect($component->get('discovered')[0]['url'])->toBe('http://sonarr.dev.local.test');
 });
 
+it('surfaces a traefik-labeled container even with no published port, via the docker api', function () {
+    $machine = Machine::factory()->create(['host' => 'nas.lan']);
+
+    Http::fake([
+        'nas.lan:2375/containers/json' => Http::response([
+            [
+                'Id' => 'abc123',
+                'Names' => ['/sonarr'],
+                'Image' => 'linuxserver/sonarr',
+                'Ports' => [['PrivatePort' => 8989, 'Type' => 'tcp']],
+                'Labels' => [
+                    'traefik.enable' => 'true',
+                    'traefik.http.routers.sonarr.rule' => 'Host(`sonarr.dev.local.test`)',
+                ],
+            ],
+            [
+                'Id' => 'def456',
+                'Names' => ['/internal-cache'],
+                'Image' => 'redis',
+                'Ports' => [['PrivatePort' => 6379, 'Type' => 'tcp']],
+            ],
+        ], 200),
+    ]);
+
+    $component = Livewire::test('machine-manager')->call('discover', $machine->id);
+
+    expect($component->get('discovered'))->toHaveCount(1)
+        ->and($component->get('discovered')[0]['name'])->toBe('sonarr')
+        ->and($component->get('discovered')[0]['url'])->toBe('http://sonarr.dev.local.test');
+});
+
 it('shows a friendly error when the docker api is unreachable', function () {
     $machine = Machine::factory()->create(['host' => 'unreachable.lan']);
 
@@ -161,6 +192,30 @@ it('prefers the traefik host label over the raw ip:port when discovering over ss
     $component = Livewire::test('machine-manager')->call('discover', $machine->id);
 
     expect($component->get('discovered')[0]['url'])->toBe('http://sonarr.dev.local.test');
+});
+
+it('surfaces a traefik-labeled container even with no published port, over ssh', function () {
+    $machine = Machine::factory()->ssh()->create(['host' => '192.168.1.12']);
+
+    $lines = implode("\n", [
+        json_encode([
+            'Names' => 'sonarr',
+            'Image' => 'linuxserver/sonarr',
+            'Ports' => '8989/tcp',
+            'Labels' => 'traefik.enable=true,traefik.http.routers.sonarr.rule=Host(`sonarr.dev.local.test`)',
+        ]),
+        json_encode(['Names' => 'internal-cache', 'Image' => 'redis', 'Ports' => '6379/tcp']),
+    ]);
+
+    Process::fake([
+        'ssh*' => Process::result(output: $lines, exitCode: 0),
+    ]);
+
+    $component = Livewire::test('machine-manager')->call('discover', $machine->id);
+
+    expect($component->get('discovered'))->toHaveCount(1)
+        ->and($component->get('discovered')[0]['name'])->toBe('sonarr')
+        ->and($component->get('discovered')[0]['url'])->toBe('http://sonarr.dev.local.test');
 });
 
 it('surfaces the ssh error output when discovery fails', function () {

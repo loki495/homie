@@ -27,7 +27,7 @@ new class extends Component
 
     public ?int $scanningMachineId = null;
 
-    /** @var list<array{name: string, image: string, port: int, url: string}> */
+    /** @var list<array{name: string, image: string, url: string}> */
     public array $discovered = [];
 
     public ?string $scanError = null;
@@ -134,22 +134,21 @@ new class extends Component
             $results = [];
 
             foreach ($response->json() ?? [] as $container) {
+                $traefikHost = $this->extractTraefikHost($container['Labels'] ?? []);
+
                 $publicPort = collect($container['Ports'] ?? [])
                     ->pluck('PublicPort')
                     ->filter()
                     ->unique()
                     ->first();
 
-                if (! $publicPort) {
+                if (! $traefikHost && ! $publicPort) {
                     continue;
                 }
-
-                $traefikHost = $this->extractTraefikHost($container['Labels'] ?? []);
 
                 $results[] = [
                     'name' => ltrim($container['Names'][0] ?? $container['Id'], '/'),
                     'image' => $container['Image'] ?? '',
-                    'port' => $publicPort,
                     'url' => $traefikHost ? 'http://'.$traefikHost : 'http://'.$host.':'.$publicPort,
                 ];
             }
@@ -157,7 +156,7 @@ new class extends Component
             $this->discovered = $results;
 
             if ($results === []) {
-                $this->scanError = 'No containers with published ports were found.';
+                $this->scanError = 'No web-reachable containers were found (no Traefik label or published port).';
             }
         } catch (Throwable) {
             $this->scanError = 'Could not reach the Docker API at '.$base.'.';
@@ -201,18 +200,16 @@ new class extends Component
                     continue;
                 }
 
+                $traefikHost = $this->extractTraefikHost($container['Labels'] ?? '');
                 $port = $this->parseDockerCliPort($container['Ports'] ?? '');
 
-                if (! $port) {
+                if (! $traefikHost && ! $port) {
                     continue;
                 }
-
-                $traefikHost = $this->extractTraefikHost($container['Labels'] ?? '');
 
                 $results[] = [
                     'name' => $container['Names'] ?? 'unknown',
                     'image' => $container['Image'] ?? '',
-                    'port' => $port,
                     'url' => $traefikHost ? 'http://'.$traefikHost : 'http://'.$machine->host.':'.$port,
                 ];
             }
@@ -220,7 +217,7 @@ new class extends Component
             $this->discovered = $results;
 
             if ($results === []) {
-                $this->scanError = 'No containers with published ports were found.';
+                $this->scanError = 'No web-reachable containers were found (no Traefik label or published port).';
             }
         } finally {
             if ($identityFile && file_exists($identityFile)) {

@@ -26,11 +26,14 @@ the UI/database — not one pre-wired to Andres's home lab.
   Composer script wrappers (`composer pint`, `phpstan`, `rector`, `pest`) already do this.
 - SQLite database file lives at `database/database.sqlite`, gitignored (it will hold
   real lab config once the app is used — never commit it).
-- `storage/ssh/` is mounted into the container for the user's own SSH keys (used by
-  "output" cards that run commands on other LAN machines). Gitignored except
-  `.gitkeep`. SSH is not a first-class feature — output-card commands are arbitrary
-  shell commands the user supplies; it's on the user to make sure they run correctly
-  in the container.
+- `storage/ssh/` is mounted into the container for the user's own SSH keys, for
+  ad-hoc use in "output" card commands (arbitrary shell commands the user supplies —
+  it's on the user to make sure they run correctly in the container). Gitignored
+  except `.gitkeep`.
+- Machine-based SSH discovery is separate from the above: each `Machine` can store
+  its own encrypted private key (`machines.ssh_private_key`), written to a 0600 temp
+  file only for the duration of a scan. Never read from `storage/ssh/` — keeps
+  discovery credentials scoped per target instead of one shared host-mounted key.
 
 ## Tooling
 

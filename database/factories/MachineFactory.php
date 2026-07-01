@@ -25,6 +25,7 @@ class MachineFactory extends Factory
             'discovery_method' => DiscoveryMethod::Docker,
             'ssh_user' => null,
             'ssh_port' => null,
+            'ssh_private_key' => null,
         ];
     }
 

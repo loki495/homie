@@ -1,0 +1,35 @@
+includes:
+    - vendor/larastan/larastan/extension.neon
+
+parameters:
+    level: 6
+
+    paths:
+        - app
+        - routes
+        - database
+        - tests
+
+    excludePaths:
+        - bootstrap
+        - storage
+        - vendor
+        - tests/Pest.php
+
+    bootstrapFiles:
+        - vendor/autoload.php
+
+    # The pre-commit hook passes staged *.blade.php files straight to PHPStan
+    # (they match the `\.php$` filter), which bypasses `paths` above and analyses
+    # them directly. Livewire 4 single-file components declare
+    # `new class extends Component {...};` as a bare statement by design (Livewire's
+    # Blade compiler consumes it) — not an accidental unused expression. Since this
+    # rule only ever fires in that bypass scenario, disable the "unmatched ignore"
+    # error for normal (paths-scoped) runs where it never triggers.
+    reportUnmatchedIgnoredErrors: false
+
+    ignoreErrors:
+        - identifier: expr.resultUnused
+
+    scanFiles:
+        - vendor/laravel/framework/src/Illuminate/Foundation/helpers.php

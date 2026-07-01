@@ -1,0 +1,44 @@
+name: homie
+
+services:
+  app:
+    container_name: homie-app
+    restart: unless-stopped
+    volumes:
+      - ./:/var/www/html
+      - ./docker/logs:/var/www/html/logs:rw
+      - ./storage/ssh:/var/www/html/storage/ssh:rw
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.homie.rule=Host(`homie.dev.local.test`)"
+      - "traefik.http.routers.homie.entrypoints=web"
+      - "traefik.http.services.homie.loadbalancer.server.port=80"
+    build:
+      context: .
+      dockerfile_inline: |
+        FROM composer:latest AS composer
+        FROM php:8.5-apache
+        COPY --from=composer /usr/bin/composer /usr/local/bin/composer
+        COPY docker/setup-dev-container.sh /tmp/setup.sh
+        RUN chmod +x /tmp/setup.sh && /usr/bin/bash /tmp/setup.sh
+    networks:
+      - web
+
+  vite:
+    image: node:20
+    container_name: homie-vite
+    working_dir: /var/www/html
+    command: ["npm", "run", "dev", "--", "--host", "0.0.0.0", "--port", "5173"]
+    volumes:
+      - ./:/var/www/html
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.homie-vite.rule=Host(`vite.homie.dev.local.test`)"
+      - "traefik.http.routers.homie-vite.entrypoints=web"
+      - "traefik.http.services.homie-vite.loadbalancer.server.port=5173"
+    networks:
+      - web
+
+networks:
+  web:
+    external: true

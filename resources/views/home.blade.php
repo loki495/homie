@@ -6,6 +6,15 @@
 
         <title>{{ config('app.name') }}</title>
 
+        <script>
+            if (
+                localStorage.getItem('homie-theme') === 'dark'
+                || (!('homie-theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)
+            ) {
+                document.documentElement.classList.add('dark');
+            }
+        </script>
+
         @vite(['resources/css/app.css', 'resources/js/app.js'])
 
         @livewireStyles

@@ -14,6 +14,7 @@ connections, card order, and groups — is user-configured data, not code.
 - Laravel 13
 - Livewire 4 (single-file components) + Alpine.js (bundled with Livewire)
 - Tailwind CSS v4 (via `@tailwindcss/vite`)
+- Flux UI (free tier) for form/button components
 - SQLite
 - Docker + Traefik for local development
 

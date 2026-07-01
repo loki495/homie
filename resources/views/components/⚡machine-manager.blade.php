@@ -300,45 +300,17 @@ new class extends Component
 
 <div class="space-y-6">
     <form wire:submit="save" class="space-y-3 rounded-xl border border-slate-200 p-4 dark:border-slate-700">
-        <label class="block text-sm font-medium text-slate-500 dark:text-slate-400">
-            {{ $editingId ? 'Edit scan target' : 'New scan target' }}
-        </label>
+        <flux:heading size="sm">{{ $editingId ? 'Edit scan target' : 'New scan target' }}</flux:heading>
 
-        <input
-            type="text"
-            wire:model="name"
-            placeholder="Name, e.g. NAS"
-            class="w-full rounded-lg border-slate-300 px-3.5 py-3 text-base sm:text-sm dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 dark:placeholder-slate-400"
-        >
-        @error('name')
-            <p class="text-sm text-rose-500">{{ $message }}</p>
-        @enderror
+        <flux:input wire:model="name" placeholder="Name, e.g. NAS" />
+        <flux:input wire:model="host" placeholder="192.168.1.50 or nas.lan" />
+        <flux:input wire:model="description" placeholder="Notes (optional)" />
 
-        <input
-            type="text"
-            wire:model="host"
-            placeholder="192.168.1.50 or nas.lan"
-            class="w-full rounded-lg border-slate-300 px-3.5 py-3 text-base sm:text-sm dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 dark:placeholder-slate-400"
-        >
-        @error('host')
-            <p class="text-sm text-rose-500">{{ $message }}</p>
-        @enderror
-
-        <input
-            type="text"
-            wire:model="description"
-            placeholder="Notes (optional)"
-            class="w-full rounded-lg border-slate-300 px-3.5 py-3 text-base sm:text-sm dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 dark:placeholder-slate-400"
-        >
-
-        <select
-            wire:model.live="discovery_method"
-            class="w-full rounded-lg border-slate-300 px-3.5 py-3 text-base sm:text-sm dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100"
-        >
+        <flux:select wire:model.live="discovery_method">
             @foreach (\App\Enums\DiscoveryMethod::cases() as $method)
-                <option value="{{ $method->value }}">{{ $method->label() }}</option>
+                <flux:select.option value="{{ $method->value }}">{{ $method->label() }}</flux:select.option>
             @endforeach
-        </select>
+        </flux:select>
 
         @if ($discovery_method === 'docker')
             <p class="text-sm text-slate-400 dark:text-slate-500">
@@ -347,28 +319,15 @@ new class extends Component
             </p>
         @else
             <div class="grid grid-cols-2 gap-3">
-                <input
-                    type="text"
-                    wire:model="ssh_user"
-                    placeholder="User (default root)"
-                    class="w-full rounded-lg border-slate-300 px-3.5 py-3 text-base sm:text-sm dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 dark:placeholder-slate-400"
-                >
-                <input
-                    type="text"
-                    wire:model="ssh_port"
-                    placeholder="Port (default 22)"
-                    class="w-full rounded-lg border-slate-300 px-3.5 py-3 text-base sm:text-sm dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 dark:placeholder-slate-400"
-                >
+                <flux:input wire:model="ssh_user" placeholder="User (default root)" />
+                <flux:input wire:model="ssh_port" placeholder="Port (default 22)" />
             </div>
-            @error('ssh_port')
-                <p class="text-sm text-rose-500">{{ $message }}</p>
-            @enderror
-            <textarea
+            <flux:textarea
                 wire:model="ssh_private_key"
                 rows="4"
                 placeholder="-----BEGIN OPENSSH PRIVATE KEY-----&#10;...&#10;-----END OPENSSH PRIVATE KEY-----"
-                class="w-full rounded-lg border-slate-300 px-3.5 py-3 font-mono text-sm dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 dark:placeholder-slate-400"
-            ></textarea>
+                class="font-mono"
+            />
             <p class="text-sm text-slate-400 dark:text-slate-500">
                 Runs <code>docker ps</code> over SSH. Key-only auth (no passwords) — paste a private key with no
                 passphrase, dedicated to this purpose. Stored encrypted. Leave blank to rely on an agent already
@@ -377,22 +336,11 @@ new class extends Component
         @endif
 
         <div class="flex gap-2">
-            <button
-                type="submit"
-                wire:loading.attr="disabled"
-                wire:target="save"
-                class="flex-1 rounded-lg bg-slate-800 px-4 py-3 text-sm font-semibold text-white active:bg-slate-700 disabled:opacity-60 dark:bg-slate-100 dark:text-slate-800 dark:active:bg-slate-200"
-            >
+            <flux:button type="submit" variant="primary" class="flex-1">
                 {{ $editingId ? 'Save' : 'Add target' }}
-            </button>
+            </flux:button>
             @if ($editingId)
-                <button
-                    type="button"
-                    wire:click="cancel"
-                    class="rounded-lg bg-slate-100 px-4 py-3 text-sm font-semibold text-slate-600 active:bg-slate-200 dark:bg-slate-700 dark:text-slate-200 dark:active:bg-slate-600"
-                >
-                    Cancel
-                </button>
+                <flux:button type="button" wire:click="cancel">Cancel</flux:button>
             @endif
         </div>
     </form>
@@ -408,36 +356,29 @@ new class extends Component
                         </p>
                     </div>
                     <div class="flex shrink-0 items-center gap-1">
-                        <button
-                            type="button"
+                        <flux:button
+                            variant="filled"
+                            size="sm"
                             wire:click="discover({{ $machine->id }})"
-                            wire:loading.attr="disabled"
-                            wire:target="discover({{ $machine->id }})"
-                            class="rounded-lg bg-indigo-50 px-3 py-2 text-sm font-semibold text-indigo-600 active:bg-indigo-100 disabled:opacity-60 dark:bg-indigo-500/10 dark:text-indigo-400"
                         >
                             Scan
-                        </button>
-                        <button
-                            type="button"
+                        </flux:button>
+                        <flux:button
+                            icon="pencil"
+                            variant="ghost"
+                            size="sm"
                             wire:click="edit({{ $machine->id }})"
-                            wire:loading.attr="disabled"
-                            wire:target="edit({{ $machine->id }})"
                             aria-label="Edit {{ $machine->name }}"
-                            class="flex h-10 w-10 items-center justify-center rounded-full text-slate-400 hover:bg-slate-100 hover:text-slate-600 disabled:opacity-60 dark:hover:bg-slate-700 dark:hover:text-slate-200"
-                        >
-                            <x-icons.pencil class="h-5 w-5" />
-                        </button>
-                        <button
-                            type="button"
+                        />
+                        <flux:button
+                            icon="trash"
+                            variant="ghost"
+                            size="sm"
+                            class="!text-rose-500 hover:!text-rose-600 dark:!text-rose-400 dark:hover:!text-rose-300"
                             wire:click="delete({{ $machine->id }})"
                             wire:confirm="Delete this scan target?"
-                            wire:loading.attr="disabled"
-                            wire:target="delete({{ $machine->id }})"
                             aria-label="Delete {{ $machine->name }}"
-                            class="flex h-10 w-10 items-center justify-center rounded-full text-rose-500 hover:bg-rose-50 hover:text-rose-600 disabled:opacity-60 dark:text-rose-400 dark:hover:bg-rose-500/10 dark:hover:text-rose-300"
-                        >
-                            <x-icons.trash class="h-5 w-5" />
-                        </button>
+                        />
                     </div>
                 </div>
 
@@ -453,13 +394,12 @@ new class extends Component
                                     <p class="truncate text-sm text-slate-600 dark:text-slate-300">{{ $result['name'] }}</p>
                                     <p class="truncate text-xs text-slate-400 dark:text-slate-500">{{ $result['url'] }}</p>
                                 </div>
-                                <button
-                                    type="button"
+                                <flux:button
+                                    size="sm"
                                     wire:click="addCardFromDiscovery('{{ $result['name'] }}', '{{ $result['url'] }}')"
-                                    class="shrink-0 rounded-lg bg-slate-100 px-3 py-1.5 text-sm font-semibold text-slate-600 active:bg-slate-200 dark:bg-slate-700 dark:text-slate-200 dark:active:bg-slate-600"
                                 >
                                     Add card
-                                </button>
+                                </flux:button>
                             </div>
                         @endforeach
                     </div>

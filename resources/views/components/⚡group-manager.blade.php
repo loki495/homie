@@ -65,35 +65,13 @@ new class extends Component
 
 <div class="space-y-6">
     <form wire:submit="save" class="space-y-3">
-        <label class="block text-sm font-medium text-slate-500 dark:text-slate-400">
-            {{ $editingId ? 'Rename group' : 'New group' }}
-        </label>
-        <input
-            type="text"
-            wire:model="name"
-            placeholder="e.g. Media"
-            class="w-full rounded-lg border-slate-300 px-3.5 py-3 text-base sm:text-sm dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 dark:placeholder-slate-400"
-        >
-        @error('name')
-            <p class="text-sm text-rose-500">{{ $message }}</p>
-        @enderror
+        <flux:input wire:model="name" :label="$editingId ? 'Rename group' : 'New group'" placeholder="e.g. Media" />
         <div class="flex gap-2">
-            <button
-                type="submit"
-                wire:loading.attr="disabled"
-                wire:target="save"
-                class="flex-1 rounded-lg bg-slate-800 px-4 py-3 text-sm font-semibold text-white active:bg-slate-700 disabled:opacity-60 dark:bg-slate-100 dark:text-slate-800 dark:active:bg-slate-200"
-            >
+            <flux:button type="submit" variant="primary" class="flex-1">
                 {{ $editingId ? 'Save' : 'Add group' }}
-            </button>
+            </flux:button>
             @if ($editingId)
-                <button
-                    type="button"
-                    wire:click="cancel"
-                    class="rounded-lg bg-slate-100 px-4 py-3 text-sm font-semibold text-slate-600 active:bg-slate-200 dark:bg-slate-700 dark:text-slate-200 dark:active:bg-slate-600"
-                >
-                    Cancel
-                </button>
+                <flux:button type="button" wire:click="cancel">Cancel</flux:button>
             @endif
         </div>
     </form>
@@ -103,27 +81,22 @@ new class extends Component
             <li class="flex items-center justify-between gap-3 rounded-xl border border-slate-200 p-3.5 dark:border-slate-700">
                 <span class="truncate text-sm text-slate-700 dark:text-slate-200">{{ $group->name }}</span>
                 <div class="flex shrink-0 items-center gap-1">
-                    <button
-                        type="button"
+                    <flux:button
+                        icon="pencil"
+                        variant="ghost"
+                        size="sm"
                         wire:click="edit({{ $group->id }})"
-                        wire:loading.attr="disabled"
-                        wire:target="edit({{ $group->id }})"
                         aria-label="Edit {{ $group->name }}"
-                        class="flex h-10 w-10 items-center justify-center rounded-full text-slate-400 hover:bg-slate-100 hover:text-slate-600 disabled:opacity-60 dark:hover:bg-slate-700 dark:hover:text-slate-200"
-                    >
-                        <x-icons.pencil class="h-5 w-5" />
-                    </button>
-                    <button
-                        type="button"
+                    />
+                    <flux:button
+                        icon="trash"
+                        variant="ghost"
+                        size="sm"
+                        class="!text-rose-500 hover:!text-rose-600 dark:!text-rose-400 dark:hover:!text-rose-300"
                         wire:click="delete({{ $group->id }})"
                         wire:confirm="Delete this group? Its cards will become ungrouped."
-                        wire:loading.attr="disabled"
-                        wire:target="delete({{ $group->id }})"
                         aria-label="Delete {{ $group->name }}"
-                        class="flex h-10 w-10 items-center justify-center rounded-full text-rose-500 hover:bg-rose-50 hover:text-rose-600 disabled:opacity-60 dark:text-rose-400 dark:hover:bg-rose-500/10 dark:hover:text-rose-300"
-                    >
-                        <x-icons.trash class="h-5 w-5" />
-                    </button>
+                    />
                 </div>
             </li>
         @empty

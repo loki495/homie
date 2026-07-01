@@ -29,6 +29,30 @@ it('fetches and caches data for a generic api card', function () {
         ->last_fetched_at->not->toBeNull();
 });
 
+it('authenticates with basic auth when the api uses a username and password', function () {
+    Http::fake([
+        'example.test/*' => Http::response(['status' => 'up'], 200),
+    ]);
+
+    $card = Card::factory()->create(['type' => CardType::Api]);
+    CardApi::factory()->create([
+        'card_id' => $card->id,
+        'provider' => ApiProvider::Generic,
+        'base_url' => 'https://example.test/api',
+        'auth_type' => 'basic',
+        'api_key' => null,
+        'username' => 'admin',
+        'password' => 'secret',
+    ]);
+
+    Livewire::test('card-api-widget', ['card' => $card])
+        ->assertSee('HTTP 200');
+
+    Http::assertSent(function ($request) {
+        return $request->hasHeader('Authorization', 'Basic '.base64_encode('admin:secret'));
+    });
+});
+
 it('shows a not-implemented message for unsupported providers without making a request', function () {
     Http::fake();
 

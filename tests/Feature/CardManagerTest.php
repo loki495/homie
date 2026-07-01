@@ -65,6 +65,42 @@ it('creates an api card with its connection details', function () {
         ->and($card->api->api_key)->toBe('secret');
 });
 
+it('creates an api card with username and password auth', function () {
+    Livewire::test('card-manager')
+        ->set('name', 'Router UI')
+        ->set('type', 'api')
+        ->set('provider', 'generic')
+        ->set('base_url', 'http://192.168.1.1')
+        ->set('auth_type', 'basic')
+        ->set('username', 'admin')
+        ->set('password', 'secret')
+        ->call('save');
+
+    $card = Card::where('name', 'Router UI')->sole();
+
+    expect($card->api->auth_type)->toBe('basic')
+        ->and($card->api->username)->toBe('admin')
+        ->and($card->api->password)->toBe('secret')
+        ->and($card->api->api_key)->toBeNull();
+});
+
+it('restores the saved auth type and credentials when editing an api card', function () {
+    $card = Card::factory()->create(['type' => CardType::Api]);
+    $card->api()->create([
+        'provider' => ApiProvider::Generic,
+        'base_url' => 'http://192.168.1.1',
+        'auth_type' => 'basic',
+        'username' => 'admin',
+        'password' => 'secret',
+    ]);
+
+    Livewire::test('card-manager')
+        ->call('edit', $card->id)
+        ->assertSet('auth_type', 'basic')
+        ->assertSet('username', 'admin')
+        ->assertSet('password', 'secret');
+});
+
 it('requires a url for link cards', function () {
     Livewire::test('card-manager')
         ->set('name', 'Router')

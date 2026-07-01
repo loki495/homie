@@ -32,7 +32,14 @@ new class extends Component
 
         try {
             $response = Http::timeout(5)
-                ->when($api->api_key, fn ($http) => $http->withHeader('X-Api-Key', $api->api_key))
+                ->when(
+                    $api->auth_type === 'basic' && $api->username,
+                    fn ($http) => $http->withBasicAuth($api->username, $api->password ?? '')
+                )
+                ->when(
+                    $api->auth_type !== 'basic' && $api->api_key,
+                    fn ($http) => $http->withHeader('X-Api-Key', $api->api_key)
+                )
                 ->get($api->base_url);
 
             $this->status = $response->successful() ? 'ok' : 'error';

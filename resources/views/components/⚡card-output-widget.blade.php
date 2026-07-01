@@ -59,5 +59,5 @@ new class extends Component
             ])></span>
         @endif
     </div>
-    <pre class="mt-2 max-h-40 overflow-auto whitespace-pre-wrap break-words font-mono text-xs text-slate-500 dark:text-slate-400">{{ $output ?? 'No output yet.' }}</pre>
+    <pre class="mt-2 max-h-40 overflow-auto whitespace-pre font-mono text-xs text-slate-500 dark:text-slate-400">{{ $output ?? 'No output yet.' }}</pre>
 </div>

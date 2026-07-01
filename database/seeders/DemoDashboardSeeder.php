@@ -20,30 +20,22 @@ class DemoDashboardSeeder extends Seeder
 {
     public function run(): void
     {
-        $mediaServer = Machine::create([
-            'name' => 'media-server',
-            'hostname' => 'media-server.lan',
-            'description' => 'Example LAN machine used by the demo cards below.',
-        ]);
-
-        $nas = Machine::create([
+        Machine::create([
             'name' => 'nas',
-            'hostname' => 'nas.lan',
-            'description' => 'Example second machine, to demonstrate a service reachable from more than one host.',
+            'host' => 'nas.lan',
+            'description' => 'Example saved scan target for the "Discover" action in Settings.',
         ]);
 
         $mediaGroup = Group::create(['name' => 'Media', 'sort_order' => 0]);
         $systemGroup = Group::create(['name' => 'System', 'sort_order' => 1]);
 
-        $plex = Card::create([
+        Card::create([
             'group_id' => $mediaGroup->id,
             'name' => 'Plex',
             'type' => CardType::Link,
             'url' => 'http://media-server.lan:32400/web',
             'sort_order' => 0,
         ]);
-        $plex->machines()->attach($mediaServer->id, ['url' => 'http://media-server.lan:32400/web']);
-        $plex->machines()->attach($nas->id, ['url' => 'http://nas.lan:32400/web']);
 
         Card::create([
             'group_id' => $mediaGroup->id,

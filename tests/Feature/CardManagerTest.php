@@ -1,0 +1,98 @@
+<?php
+
+declare(strict_types=1);
+
+use App\Enums\ApiProvider;
+use App\Enums\CardType;
+use App\Models\Card;
+use App\Models\CardOutput;
+use App\Models\Group;
+use Livewire\Livewire;
+
+it('creates a link card', function () {
+    Livewire::test('card-manager')
+        ->set('name', 'Router')
+        ->set('type', 'link')
+        ->set('url', 'http://192.168.1.1')
+        ->call('save');
+
+    $card = Card::where('name', 'Router')->sole();
+
+    expect($card->type)->toBe(CardType::Link)
+        ->and($card->url)->toBe('http://192.168.1.1');
+});
+
+it('creates an output card with its command', function () {
+    Livewire::test('card-manager')
+        ->set('name', 'Disk')
+        ->set('type', 'output')
+        ->set('command', 'df -h')
+        ->call('save');
+
+    $card = Card::where('name', 'Disk')->sole();
+
+    expect($card->type)->toBe(CardType::Output)
+        ->and($card->output->command)->toBe('df -h');
+});
+
+it('creates an api card with its connection details', function () {
+    Livewire::test('card-manager')
+        ->set('name', 'Sonarr')
+        ->set('type', 'api')
+        ->set('provider', 'sonarr')
+        ->set('base_url', 'http://nas.lan:8989')
+        ->set('api_key', 'secret')
+        ->call('save');
+
+    $card = Card::where('name', 'Sonarr')->sole();
+
+    expect($card->type)->toBe(CardType::Api)
+        ->and($card->url)->toBe('http://nas.lan:8989')
+        ->and($card->api->provider)->toBe(ApiProvider::Sonarr)
+        ->and($card->api->api_key)->toBe('secret');
+});
+
+it('requires a url for link cards', function () {
+    Livewire::test('card-manager')
+        ->set('name', 'Router')
+        ->set('type', 'link')
+        ->set('url', '')
+        ->call('save')
+        ->assertHasErrors('url');
+});
+
+it('assigns a card to a group', function () {
+    $group = Group::factory()->create();
+
+    Livewire::test('card-manager')
+        ->set('name', 'Plex')
+        ->set('type', 'link')
+        ->set('url', 'http://plex.lan')
+        ->set('group_id', $group->id)
+        ->call('save');
+
+    expect(Card::where('name', 'Plex')->sole()->group_id)->toBe($group->id);
+});
+
+it('drops the output record when an existing card is edited to a different type', function () {
+    $card = Card::factory()->create(['type' => CardType::Output]);
+    CardOutput::factory()->create(['card_id' => $card->id]);
+
+    Livewire::test('card-manager')
+        ->call('edit', $card->id)
+        ->set('type', 'link')
+        ->set('url', 'http://example.lan')
+        ->call('save');
+
+    expect($card->fresh()->output)->toBeNull();
+});
+
+it('deletes a card and its output record', function () {
+    $card = Card::factory()->create(['type' => CardType::Output]);
+    $output = CardOutput::factory()->create(['card_id' => $card->id]);
+
+    Livewire::test('card-manager')->call('delete', $card->id);
+
+    expect(Card::find($card->id))->toBeNull();
+    expect(CardOutput::find($output->id))->toBeNull();
+});

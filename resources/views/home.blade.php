@@ -21,6 +21,7 @@
     </head>
     <body>
         <livewire:dashboard />
+        <livewire:sidebar />
 
         @livewireScripts
     </body>

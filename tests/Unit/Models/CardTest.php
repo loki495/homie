@@ -8,7 +8,6 @@ use App\Models\Card;
 use App\Models\CardApi;
 use App\Models\CardOutput;
 use App\Models\Group;
-use App\Models\Machine;
 
 it('casts type to a CardType enum', function () {
     $card = Card::factory()->create(['type' => CardType::Link]);
@@ -28,19 +27,6 @@ it('can be ungrouped', function () {
     $card = Card::factory()->create(['group_id' => null]);
 
     expect($card->group)->toBeNull();
-});
-
-it('can belong to multiple machines with a per-machine url override', function () {
-    $card = Card::factory()->create();
-    $machineA = Machine::factory()->create();
-    $machineB = Machine::factory()->create();
-
-    $card->machines()->attach($machineA->id, ['url' => 'http://a.lan']);
-    $card->machines()->attach($machineB->id, ['url' => 'http://b.lan']);
-
-    expect($card->machines)->toHaveCount(2);
-    expect($card->machines->firstWhere('id', $machineA->id)->pivot->url)->toBe('http://a.lan');
-    expect($card->machines->firstWhere('id', $machineB->id)->pivot->url)->toBe('http://b.lan');
 });
 
 it('has one output configuration', function () {

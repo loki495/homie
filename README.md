@@ -71,5 +71,5 @@ docker exec -u root homie-app chown -R 1000:1000 /var/www/html
 
 ## Git workflow
 
-`master` mirrors production. Day-to-day work happens on `local` (rebased onto
-`master`). Feature branches, if needed, branch off `local`.
+Single-branch: `main`. This project doesn't use the master/local split — work happens
+directly on `main`.

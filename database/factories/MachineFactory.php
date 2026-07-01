@@ -19,9 +19,8 @@ class MachineFactory extends Factory
     {
         return [
             'name' => ucfirst(fake()->domainWord()),
-            'hostname' => fake()->domainWord().'.lan',
+            'host' => fake()->domainWord().'.lan',
             'description' => fake()->optional()->sentence(),
-            'docker_host' => null,
         ];
     }
 }

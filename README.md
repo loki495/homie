@@ -20,8 +20,9 @@ connections, card order, and groups — is user-configured data, not code.
 ## Planned features
 
 - Service cards that open the linked site on click
-- Services spanning multiple machines
-- Docker service discovery (local and remote), plus manual custom links
+- Docker service discovery: save a scan target (name + host) in Settings, run a manual
+  scan against its Docker Engine API, and turn discovered containers into cards
+- Manual custom links for anything discovery doesn't cover
 - Editable "output" cards: user-defined shell commands (local or remote, e.g. via SSH),
   run non-blockingly on each page load, rendering raw output (disk space, load, etc.)
 - API-connected cards for services with an API (arr stack, nzbget, and similar)

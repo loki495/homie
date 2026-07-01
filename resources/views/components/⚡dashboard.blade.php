@@ -3,6 +3,7 @@
 use App\Models\Card;
 use App\Models\Group;
 use Illuminate\Database\Eloquent\Collection;
+use Livewire\Attributes\On;
 use Livewire\Component;
 
 new class extends Component
@@ -12,6 +13,12 @@ new class extends Component
     public function toggleEditing(): void
     {
         $this->editing = ! $this->editing;
+    }
+
+    #[On('dashboard-updated')]
+    public function refresh(): void
+    {
+        // Re-renders with fresh groups()/ungroupedCards() queries — no state to update.
     }
 
     public function moveCard(int $cardId, int $direction): void
@@ -106,6 +113,14 @@ new class extends Component
                 ])
             >
                 {{ $editing ? 'Done' : 'Arrange' }}
+            </button>
+            <button
+                type="button"
+                x-data
+                x-on:click="$store.sidebar.open = true"
+                class="rounded-md bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-600 dark:bg-slate-700 dark:text-slate-200"
+            >
+                Manage
             </button>
         </div>
     </header>

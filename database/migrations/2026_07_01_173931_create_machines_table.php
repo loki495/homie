@@ -14,9 +14,8 @@ return new class extends Migration
         Schema::create('machines', function (Blueprint $table) {
             $table->id();
             $table->string('name');
-            $table->string('hostname')->nullable();
+            $table->string('host');
             $table->text('description')->nullable();
-            $table->string('docker_host')->nullable();
             $table->timestamps();
         });
     }

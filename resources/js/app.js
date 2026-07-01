@@ -8,4 +8,8 @@ document.addEventListener('alpine:init', () => {
             localStorage.setItem('homie-theme', this.dark ? 'dark' : 'light');
         },
     });
+
+    Alpine.store('sidebar', {
+        open: false,
+    });
 });

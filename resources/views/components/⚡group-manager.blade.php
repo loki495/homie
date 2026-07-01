@@ -34,6 +34,7 @@ new class extends Component
         $group = Group::findOrFail($groupId);
         $this->editingId = $group->id;
         $this->name = $group->name;
+        $this->dispatch('scroll-sidebar-top');
     }
 
     public function cancel(): void
@@ -79,7 +80,9 @@ new class extends Component
         <div class="flex gap-2">
             <button
                 type="submit"
-                class="flex-1 rounded-lg bg-slate-800 px-4 py-3 text-sm font-semibold text-white active:bg-slate-700 dark:bg-slate-100 dark:text-slate-800 dark:active:bg-slate-200"
+                wire:loading.attr="disabled"
+                wire:target="save"
+                class="flex-1 rounded-lg bg-slate-800 px-4 py-3 text-sm font-semibold text-white active:bg-slate-700 disabled:opacity-60 dark:bg-slate-100 dark:text-slate-800 dark:active:bg-slate-200"
             >
                 {{ $editingId ? 'Save' : 'Add group' }}
             </button>
@@ -103,8 +106,10 @@ new class extends Component
                     <button
                         type="button"
                         wire:click="edit({{ $group->id }})"
+                        wire:loading.attr="disabled"
+                        wire:target="edit({{ $group->id }})"
                         aria-label="Edit {{ $group->name }}"
-                        class="flex h-10 w-10 items-center justify-center rounded-full text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-700 dark:hover:text-slate-200"
+                        class="flex h-10 w-10 items-center justify-center rounded-full text-slate-400 hover:bg-slate-100 hover:text-slate-600 disabled:opacity-60 dark:hover:bg-slate-700 dark:hover:text-slate-200"
                     >
                         <x-icons.pencil class="h-5 w-5" />
                     </button>
@@ -112,8 +117,10 @@ new class extends Component
                         type="button"
                         wire:click="delete({{ $group->id }})"
                         wire:confirm="Delete this group? Its cards will become ungrouped."
+                        wire:loading.attr="disabled"
+                        wire:target="delete({{ $group->id }})"
                         aria-label="Delete {{ $group->name }}"
-                        class="flex h-10 w-10 items-center justify-center rounded-full text-slate-400 hover:bg-rose-50 hover:text-rose-500 dark:hover:bg-rose-500/10 dark:hover:text-rose-400"
+                        class="flex h-10 w-10 items-center justify-center rounded-full text-rose-500 hover:bg-rose-50 hover:text-rose-600 disabled:opacity-60 dark:text-rose-400 dark:hover:bg-rose-500/10 dark:hover:text-rose-300"
                     >
                         <x-icons.trash class="h-5 w-5" />
                     </button>

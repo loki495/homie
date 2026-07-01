@@ -25,6 +25,8 @@ new class extends Component
 
     public string $ssh_port = '';
 
+    public string $ssh_private_key = '';
+
     public ?int $scanningMachineId = null;
 
     /** @var list<array{name: string, image: string, port: int, url: string}> */
@@ -58,6 +60,7 @@ new class extends Component
             'discovery_method' => DiscoveryMethod::from($this->discovery_method),
             'ssh_user' => $this->discovery_method === 'ssh' && $this->ssh_user !== '' ? $this->ssh_user : null,
             'ssh_port' => $this->discovery_method === 'ssh' && $this->ssh_port !== '' ? (int) $this->ssh_port : null,
+            'ssh_private_key' => $this->discovery_method === 'ssh' && $this->ssh_private_key !== '' ? $this->ssh_private_key : null,
         ])->save();
 
         $this->resetForm();
@@ -74,6 +77,7 @@ new class extends Component
         $this->discovery_method = $machine->discovery_method->value;
         $this->ssh_user = (string) $machine->ssh_user;
         $this->ssh_port = $machine->ssh_port !== null ? (string) $machine->ssh_port : '';
+        $this->ssh_private_key = (string) $machine->ssh_private_key;
     }
 
     public function cancel(): void
@@ -83,7 +87,7 @@ new class extends Component
 
     protected function resetForm(): void
     {
-        $this->reset(['editingId', 'name', 'host', 'description', 'ssh_user', 'ssh_port']);
+        $this->reset(['editingId', 'name', 'host', 'description', 'ssh_user', 'ssh_port', 'ssh_private_key']);
         $this->discovery_method = 'docker';
         $this->resetValidation();
     }
@@ -161,58 +165,71 @@ new class extends Component
 
     private function discoverViaSsh(Machine $machine): void
     {
-        $command = $this->sshCommand($machine, "docker ps --format '{{json .}}'");
+        $identityFile = null;
 
-        $result = Process::timeout(15)->run($command);
-
-        if (! $result->successful()) {
-            $stderr = trim($result->errorOutput());
-            $this->scanError = $stderr !== ''
-                ? 'SSH discovery failed: '.$stderr
-                : 'SSH discovery failed (exit code '.$result->exitCode().').';
-
-            return;
+        if ($machine->ssh_private_key) {
+            $identityFile = tempnam(sys_get_temp_dir(), 'homie-ssh-');
+            file_put_contents($identityFile, rtrim($machine->ssh_private_key)."\n");
+            chmod($identityFile, 0600);
         }
 
-        $results = [];
+        try {
+            $command = $this->sshCommand($machine, $identityFile, "docker ps --format '{{json .}}'");
 
-        foreach (preg_split('/\r?\n/', trim($result->output())) as $line) {
-            if ($line === '') {
-                continue;
+            $result = Process::timeout(15)->run($command);
+
+            if (! $result->successful()) {
+                $stderr = trim($result->errorOutput());
+                $this->scanError = $stderr !== ''
+                    ? 'SSH discovery failed: '.$stderr
+                    : 'SSH discovery failed (exit code '.$result->exitCode().').';
+
+                return;
             }
 
-            $container = json_decode($line, true);
+            $results = [];
 
-            if (! is_array($container)) {
-                continue;
+            foreach (preg_split('/\r?\n/', trim($result->output())) as $line) {
+                if ($line === '') {
+                    continue;
+                }
+
+                $container = json_decode($line, true);
+
+                if (! is_array($container)) {
+                    continue;
+                }
+
+                $port = $this->parseDockerCliPort($container['Ports'] ?? '');
+
+                if (! $port) {
+                    continue;
+                }
+
+                $results[] = [
+                    'name' => $container['Names'] ?? 'unknown',
+                    'image' => $container['Image'] ?? '',
+                    'port' => $port,
+                    'url' => 'http://'.$machine->host.':'.$port,
+                ];
             }
 
-            $port = $this->parseDockerCliPort($container['Ports'] ?? '');
+            $this->discovered = $results;
 
-            if (! $port) {
-                continue;
+            if ($results === []) {
+                $this->scanError = 'No containers with published ports were found.';
             }
-
-            $results[] = [
-                'name' => $container['Names'] ?? 'unknown',
-                'image' => $container['Image'] ?? '',
-                'port' => $port,
-                'url' => 'http://'.$machine->host.':'.$port,
-            ];
-        }
-
-        $this->discovered = $results;
-
-        if ($results === []) {
-            $this->scanError = 'No containers with published ports were found.';
+        } finally {
+            if ($identityFile && file_exists($identityFile)) {
+                unlink($identityFile);
+            }
         }
     }
 
-    private function sshCommand(Machine $machine, string $remoteCommand): string
+    private function sshCommand(Machine $machine, ?string $identityFile, string $remoteCommand): string
     {
         $port = $machine->ssh_port ?: 22;
         $user = $machine->ssh_user ?: 'root';
-        $identity = storage_path('ssh/id_rsa');
 
         $options = [
             '-o BatchMode=yes',
@@ -223,8 +240,9 @@ new class extends Component
             '-p '.$port,
         ];
 
-        if (is_file($identity)) {
-            $options[] = '-i '.escapeshellarg($identity);
+        if ($identityFile) {
+            $options[] = '-i '.escapeshellarg($identityFile);
+            $options[] = '-o IdentitiesOnly=yes';
         }
 
         return sprintf(
@@ -331,9 +349,16 @@ new class extends Component
             @error('ssh_port')
                 <p class="text-sm text-rose-500">{{ $message }}</p>
             @enderror
+            <textarea
+                wire:model="ssh_private_key"
+                rows="4"
+                placeholder="-----BEGIN OPENSSH PRIVATE KEY-----&#10;...&#10;-----END OPENSSH PRIVATE KEY-----"
+                class="w-full rounded-lg border-slate-300 px-3.5 py-3 font-mono text-sm dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 dark:placeholder-slate-400"
+            ></textarea>
             <p class="text-sm text-slate-400 dark:text-slate-500">
-                Runs <code>docker ps</code> over SSH. Uses key-based auth only — place a private key at
-                <code>storage/ssh/id_rsa</code> or rely on an agent already available to the container.
+                Runs <code>docker ps</code> over SSH. Key-only auth (no passwords) — paste a private key with no
+                passphrase, dedicated to this purpose. Stored encrypted. Leave blank to rely on an agent already
+                available to the container.
             </p>
         @endif
 

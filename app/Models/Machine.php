@@ -21,6 +21,7 @@ class Machine extends Model
         'discovery_method',
         'ssh_user',
         'ssh_port',
+        'ssh_private_key',
     ];
 
     #[\Override]
@@ -29,6 +30,7 @@ class Machine extends Model
         return [
             'discovery_method' => DiscoveryMethod::class,
             'ssh_port' => 'integer',
+            'ssh_private_key' => 'encrypted',
         ];
     }
 }

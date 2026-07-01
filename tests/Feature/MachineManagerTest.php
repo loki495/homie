@@ -134,3 +134,36 @@ it('surfaces the ssh error output when discovery fails', function () {
 
     expect($component->get('scanError'))->toContain('Permission denied (publickey).');
 });
+
+it('stores the ssh private key encrypted at rest', function () {
+    Livewire::test('machine-manager')
+        ->set('name', 'Local')
+        ->set('host', '192.168.1.12')
+        ->set('discovery_method', 'ssh')
+        ->set('ssh_private_key', 'super-secret-key')
+        ->call('save');
+
+    $machine = Machine::where('name', 'Local')->sole();
+
+    expect($machine->ssh_private_key)->toBe('super-secret-key');
+
+    $raw = DB::table('machines')->where('id', $machine->id)->value('ssh_private_key');
+    expect($raw)->not->toBe('super-secret-key');
+});
+
+it('writes a temporary identity file for the scan and cleans it up afterwards', function () {
+    $machine = Machine::factory()->ssh()->create([
+        'ssh_private_key' => "-----BEGIN OPENSSH PRIVATE KEY-----\nfakekeydata\n-----END OPENSSH PRIVATE KEY-----",
+    ]);
+
+    Process::fake([
+        'ssh*' => Process::result(output: '', exitCode: 0),
+    ]);
+
+    Livewire::test('machine-manager')->call('discover', $machine->id);
+
+    Process::assertRan(fn ($process): bool => str_contains((string) $process->command, '-i ')
+        && str_contains((string) $process->command, '-o IdentitiesOnly=yes'));
+
+    expect(glob(sys_get_temp_dir().'/homie-ssh-*'))->toBeEmpty();
+});

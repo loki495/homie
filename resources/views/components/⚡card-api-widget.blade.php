@@ -3,6 +3,7 @@
 use App\Enums\ApiProvider;
 use App\Models\Card;
 use Illuminate\Support\Facades\Http;
+use Livewire\Attributes\On;
 use Livewire\Component;
 
 new class extends Component
@@ -13,11 +14,15 @@ new class extends Component
 
     public ?string $summary = null;
 
-    public function mount(Card $card): void
+    #[On('dashboard-updated')]
+    public function refreshCard(): void
     {
-        $this->card = $card;
+        $this->card = $this->card->fresh();
+    }
 
-        $api = $card->api;
+    public function mount(): void
+    {
+        $api = $this->card->api()->first();
 
         if (! $api) {
             return;

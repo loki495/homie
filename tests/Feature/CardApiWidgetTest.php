@@ -53,6 +53,30 @@ it('authenticates with basic auth when the api uses a username and password', fu
     });
 });
 
+it('picks up card name and icon changes without re-fetching the api', function () {
+    Http::fake([
+        'example.test/*' => Http::response(['status' => 'up'], 200),
+    ]);
+
+    $card = Card::factory()->create(['type' => CardType::Api, 'name' => 'Old Name']);
+    CardApi::factory()->create([
+        'card_id' => $card->id,
+        'provider' => ApiProvider::Generic,
+        'base_url' => 'https://example.test/api',
+    ]);
+
+    $component = Livewire::test('card-api-widget', ['card' => $card])
+        ->assertSee('Old Name');
+
+    $card->update(['name' => 'New Name', 'icon' => 'https://example.test/icon.svg']);
+
+    $component->dispatch('dashboard-updated')
+        ->assertSee('New Name')
+        ->assertSee('https://example.test/icon.svg');
+
+    Http::assertSentCount(1);
+});
+
 it('shows a not-implemented message for unsupported providers without making a request', function () {
     Http::fake();
 

@@ -5,6 +5,7 @@ use App\Enums\CardType;
 use App\Models\Card;
 use App\Models\Group;
 use Illuminate\Database\Eloquent\Collection;
+use Livewire\Attributes\On;
 use Livewire\Component;
 
 new class extends Component
@@ -26,6 +27,16 @@ new class extends Component
     public string $base_url = '';
 
     public string $api_key = '';
+
+    #[On('prefill-card')]
+    public function prefillFromDiscovery(string $name, string $url): void
+    {
+        $this->resetForm();
+        $this->name = $name;
+        $this->type = 'link';
+        $this->url = $url;
+        $this->dispatch('scroll-sidebar-top');
+    }
 
     /**
      * @return array<string, string>
@@ -101,6 +112,7 @@ new class extends Component
         $this->provider = $card->api?->provider?->value ?? 'generic';
         $this->base_url = $card->api?->base_url ?? '';
         $this->api_key = $card->api?->api_key ?? '';
+        $this->dispatch('scroll-sidebar-top');
     }
 
     public function cancel(): void
@@ -247,7 +259,9 @@ new class extends Component
         <div class="flex gap-2">
             <button
                 type="submit"
-                class="flex-1 rounded-lg bg-slate-800 px-4 py-3 text-sm font-semibold text-white active:bg-slate-700 dark:bg-slate-100 dark:text-slate-800 dark:active:bg-slate-200"
+                wire:loading.attr="disabled"
+                wire:target="save"
+                class="flex-1 rounded-lg bg-slate-800 px-4 py-3 text-sm font-semibold text-white active:bg-slate-700 disabled:opacity-60 dark:bg-slate-100 dark:text-slate-800 dark:active:bg-slate-200"
             >
                 {{ $editingId ? 'Save' : 'Add card' }}
             </button>
@@ -276,8 +290,10 @@ new class extends Component
                     <button
                         type="button"
                         wire:click="edit({{ $card->id }})"
+                        wire:loading.attr="disabled"
+                        wire:target="edit({{ $card->id }})"
                         aria-label="Edit {{ $card->name }}"
-                        class="flex h-10 w-10 items-center justify-center rounded-full text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-700 dark:hover:text-slate-200"
+                        class="flex h-10 w-10 items-center justify-center rounded-full text-slate-400 hover:bg-slate-100 hover:text-slate-600 disabled:opacity-60 dark:hover:bg-slate-700 dark:hover:text-slate-200"
                     >
                         <x-icons.pencil class="h-5 w-5" />
                     </button>
@@ -285,8 +301,10 @@ new class extends Component
                         type="button"
                         wire:click="delete({{ $card->id }})"
                         wire:confirm="Delete this card?"
+                        wire:loading.attr="disabled"
+                        wire:target="delete({{ $card->id }})"
                         aria-label="Delete {{ $card->name }}"
-                        class="flex h-10 w-10 items-center justify-center rounded-full text-slate-400 hover:bg-rose-50 hover:text-rose-500 dark:hover:bg-rose-500/10 dark:hover:text-rose-400"
+                        class="flex h-10 w-10 items-center justify-center rounded-full text-rose-500 hover:bg-rose-50 hover:text-rose-600 disabled:opacity-60 dark:text-rose-400 dark:hover:bg-rose-500/10 dark:hover:text-rose-300"
                     >
                         <x-icons.trash class="h-5 w-5" />
                     </button>

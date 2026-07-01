@@ -1,8 +1,6 @@
 <?php
 
-use App\Enums\CardType;
 use App\Enums\DiscoveryMethod;
-use App\Models\Card;
 use App\Models\Machine;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Http;
@@ -78,6 +76,7 @@ new class extends Component
         $this->ssh_user = (string) $machine->ssh_user;
         $this->ssh_port = $machine->ssh_port !== null ? (string) $machine->ssh_port : '';
         $this->ssh_private_key = (string) $machine->ssh_private_key;
+        $this->dispatch('scroll-sidebar-top');
     }
 
     public function cancel(): void
@@ -145,11 +144,13 @@ new class extends Component
                     continue;
                 }
 
+                $traefikHost = $this->extractTraefikHost($container['Labels'] ?? []);
+
                 $results[] = [
                     'name' => ltrim($container['Names'][0] ?? $container['Id'], '/'),
                     'image' => $container['Image'] ?? '',
                     'port' => $publicPort,
-                    'url' => 'http://'.$host.':'.$publicPort,
+                    'url' => $traefikHost ? 'http://'.$traefikHost : 'http://'.$host.':'.$publicPort,
                 ];
             }
 
@@ -206,11 +207,13 @@ new class extends Component
                     continue;
                 }
 
+                $traefikHost = $this->extractTraefikHost($container['Labels'] ?? '');
+
                 $results[] = [
                     'name' => $container['Names'] ?? 'unknown',
                     'image' => $container['Image'] ?? '',
                     'port' => $port,
-                    'url' => 'http://'.$machine->host.':'.$port,
+                    'url' => $traefikHost ? 'http://'.$traefikHost : 'http://'.$machine->host.':'.$port,
                 ];
             }
 
@@ -262,16 +265,27 @@ new class extends Component
         return null;
     }
 
+    /**
+     * @param  array<string, string>|string  $labels  Docker Engine API gives an
+     *                                                object of label => value;
+     *                                                `docker ps --format json`
+     *                                                gives a single comma-joined string.
+     */
+    private function extractTraefikHost(array|string $labels): ?string
+    {
+        $haystack = is_array($labels) ? implode(' ', $labels) : $labels;
+
+        if (preg_match('/Host\(`([^`]+)`\)/', $haystack, $matches)) {
+            return $matches[1];
+        }
+
+        return null;
+    }
+
     public function addCardFromDiscovery(string $name, string $url): void
     {
-        Card::create([
-            'name' => $name,
-            'type' => CardType::Link,
-            'url' => $url,
-            'sort_order' => (Card::whereNull('group_id')->max('sort_order') ?? -1) + 1,
-        ]);
-
-        $this->dispatch('dashboard-updated');
+        $this->dispatch('switch-sidebar-tab', tab: 'cards');
+        $this->dispatch('prefill-card', name: $name, url: $url);
     }
 
     /**
@@ -365,7 +379,9 @@ new class extends Component
         <div class="flex gap-2">
             <button
                 type="submit"
-                class="flex-1 rounded-lg bg-slate-800 px-4 py-3 text-sm font-semibold text-white active:bg-slate-700 dark:bg-slate-100 dark:text-slate-800 dark:active:bg-slate-200"
+                wire:loading.attr="disabled"
+                wire:target="save"
+                class="flex-1 rounded-lg bg-slate-800 px-4 py-3 text-sm font-semibold text-white active:bg-slate-700 disabled:opacity-60 dark:bg-slate-100 dark:text-slate-800 dark:active:bg-slate-200"
             >
                 {{ $editingId ? 'Save' : 'Add target' }}
             </button>
@@ -397,15 +413,17 @@ new class extends Component
                             wire:click="discover({{ $machine->id }})"
                             wire:loading.attr="disabled"
                             wire:target="discover({{ $machine->id }})"
-                            class="rounded-lg bg-indigo-50 px-3 py-2 text-sm font-semibold text-indigo-600 active:bg-indigo-100 dark:bg-indigo-500/10 dark:text-indigo-400"
+                            class="rounded-lg bg-indigo-50 px-3 py-2 text-sm font-semibold text-indigo-600 active:bg-indigo-100 disabled:opacity-60 dark:bg-indigo-500/10 dark:text-indigo-400"
                         >
                             Scan
                         </button>
                         <button
                             type="button"
                             wire:click="edit({{ $machine->id }})"
+                            wire:loading.attr="disabled"
+                            wire:target="edit({{ $machine->id }})"
                             aria-label="Edit {{ $machine->name }}"
-                            class="flex h-10 w-10 items-center justify-center rounded-full text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-700 dark:hover:text-slate-200"
+                            class="flex h-10 w-10 items-center justify-center rounded-full text-slate-400 hover:bg-slate-100 hover:text-slate-600 disabled:opacity-60 dark:hover:bg-slate-700 dark:hover:text-slate-200"
                         >
                             <x-icons.pencil class="h-5 w-5" />
                         </button>
@@ -413,8 +431,10 @@ new class extends Component
                             type="button"
                             wire:click="delete({{ $machine->id }})"
                             wire:confirm="Delete this scan target?"
+                            wire:loading.attr="disabled"
+                            wire:target="delete({{ $machine->id }})"
                             aria-label="Delete {{ $machine->name }}"
-                            class="flex h-10 w-10 items-center justify-center rounded-full text-slate-400 hover:bg-rose-50 hover:text-rose-500 dark:hover:bg-rose-500/10 dark:hover:text-rose-400"
+                            class="flex h-10 w-10 items-center justify-center rounded-full text-rose-500 hover:bg-rose-50 hover:text-rose-600 disabled:opacity-60 dark:text-rose-400 dark:hover:bg-rose-500/10 dark:hover:text-rose-300"
                         >
                             <x-icons.trash class="h-5 w-5" />
                         </button>
@@ -428,10 +448,11 @@ new class extends Component
                         @endif
 
                         @foreach ($discovered as $result)
-                            <div class="flex items-center justify-between gap-2 text-sm">
-                                <span class="truncate text-slate-600 dark:text-slate-300">
-                                    {{ $result['name'] }} <span class="text-slate-400 dark:text-slate-500">:{{ $result['port'] }}</span>
-                                </span>
+                            <div class="flex items-center justify-between gap-2">
+                                <div class="min-w-0 flex-1">
+                                    <p class="truncate text-sm text-slate-600 dark:text-slate-300">{{ $result['name'] }}</p>
+                                    <p class="truncate text-xs text-slate-400 dark:text-slate-500">{{ $result['url'] }}</p>
+                                </div>
                                 <button
                                     type="button"
                                     wire:click="addCardFromDiscovery('{{ $result['name'] }}', '{{ $result['url'] }}')"

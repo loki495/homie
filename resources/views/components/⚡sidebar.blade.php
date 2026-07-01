@@ -28,6 +28,7 @@ new class extends Component
     >
         <div
             x-data="{ tab: 'groups' }"
+            x-on:switch-sidebar-tab.window="tab = $event.detail.tab"
             class="flex h-full flex-col"
         >
             <div class="flex items-center justify-between border-b border-slate-200 px-5 py-5 dark:border-slate-700">
@@ -68,7 +69,11 @@ new class extends Component
                 </button>
             </div>
 
-            <div class="flex-1 overflow-y-auto p-5">
+            <div
+                class="flex-1 overflow-y-auto p-5"
+                x-ref="scrollBody"
+                x-on:scroll-sidebar-top.window="$refs.scrollBody.scrollTop = 0"
+            >
                 <div x-show="tab === 'groups'">
                     <livewire:group-manager />
                 </div>

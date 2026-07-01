@@ -37,6 +37,19 @@ Only one is active at a time based on `auth_type`; the unused fields are nulled 
 save so stale credentials from a previous auth-type choice don't linger. `password` is
 encrypted at rest the same way `api_key` already was.
 
+## Output/API widgets don't reactively see Card edits
+
+`⚡card-output-widget.blade.php` and `⚡card-api-widget.blade.php` are `lazy`-loaded
+nested Livewire components, so they're independent islands after their first hydration —
+editing a card's name/icon in the sidebar and having Dashboard re-render via the
+`dashboard-updated` event does *not* propagate into already-mounted children. (Tried
+`#[Reactive]` on the `card` prop first — doesn't cross the lazy-load boundary in
+practice, and complicates mount() since a `#[Reactive]` prop can't be reassigned from
+inside the component without throwing `CannotMutateReactivePropException`.) Fixed by
+giving both widgets their own `#[On('dashboard-updated')]` listener that does
+`$this->card = $this->card->fresh();` — cheap, and deliberately does *not* re-run the
+shell command / API fetch on every dashboard change.
+
 ## Discovery: don't gate on published ports alone
 
 Both `discoverViaDocker` and `discoverViaSsh` in `⚡machine-manager.blade.php` check

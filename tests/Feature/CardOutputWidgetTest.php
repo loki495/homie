@@ -36,3 +36,23 @@ it('shows the error output when the command fails', function () {
     Livewire::test('card-output-widget', ['card' => $card])
         ->assertSee('command not found');
 });
+
+it('picks up card name and icon changes without re-running the command', function () {
+    Process::fake([
+        '*' => Process::result(output: "mocked disk output\n", exitCode: 0),
+    ]);
+
+    $card = Card::factory()->create(['type' => CardType::Output, 'name' => 'Old Name']);
+    CardOutput::factory()->create(['card_id' => $card->id, 'command' => 'df -h']);
+
+    $component = Livewire::test('card-output-widget', ['card' => $card])
+        ->assertSee('Old Name');
+
+    $card->update(['name' => 'New Name', 'icon' => 'https://example.test/icon.svg']);
+
+    $component->dispatch('dashboard-updated')
+        ->assertSee('New Name')
+        ->assertSee('https://example.test/icon.svg');
+
+    Process::assertRanTimes('df -h', 1);
+});

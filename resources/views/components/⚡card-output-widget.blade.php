@@ -2,6 +2,7 @@
 
 use App\Models\Card;
 use Illuminate\Support\Facades\Process;
+use Livewire\Attributes\On;
 use Livewire\Component;
 
 new class extends Component
@@ -12,11 +13,15 @@ new class extends Component
 
     public ?int $exitCode = null;
 
-    public function mount(Card $card): void
+    #[On('dashboard-updated')]
+    public function refreshCard(): void
     {
-        $this->card = $card;
+        $this->card = $this->card->fresh();
+    }
 
-        $cardOutput = $card->output;
+    public function mount(): void
+    {
+        $cardOutput = $this->card->output()->first();
 
         if (! $cardOutput) {
             return;

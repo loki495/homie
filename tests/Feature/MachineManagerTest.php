@@ -2,7 +2,6 @@
 
 declare(strict_types=1);
 
-use App\Enums\CardType;
 use App\Enums\DiscoveryMethod;
 use App\Models\Card;
 use App\Models\Machine;
@@ -66,6 +65,29 @@ it('only surfaces containers with a published port when discovering', function (
         ->and($component->get('discovered')[0]['url'])->toBe('http://nas.lan:8989');
 });
 
+it('prefers the traefik host label over the raw ip:port when discovering via the docker api', function () {
+    $machine = Machine::factory()->create(['host' => 'nas.lan']);
+
+    Http::fake([
+        'nas.lan:2375/containers/json' => Http::response([
+            [
+                'Id' => 'abc123',
+                'Names' => ['/sonarr'],
+                'Image' => 'linuxserver/sonarr',
+                'Ports' => [['PrivatePort' => 8989, 'PublicPort' => 8989, 'Type' => 'tcp']],
+                'Labels' => [
+                    'traefik.enable' => 'true',
+                    'traefik.http.routers.sonarr.rule' => 'Host(`sonarr.dev.local.test`)',
+                ],
+            ],
+        ], 200),
+    ]);
+
+    $component = Livewire::test('machine-manager')->call('discover', $machine->id);
+
+    expect($component->get('discovered')[0]['url'])->toBe('http://sonarr.dev.local.test');
+});
+
 it('shows a friendly error when the docker api is unreachable', function () {
     $machine = Machine::factory()->create(['host' => 'unreachable.lan']);
 
@@ -78,14 +100,13 @@ it('shows a friendly error when the docker api is unreachable', function () {
     expect($component->get('scanError'))->toContain('Could not reach');
 });
 
-it('creates a link card from a discovery result', function () {
+it('hands off a discovery result to the cards tab instead of creating it directly', function () {
     Livewire::test('machine-manager')
-        ->call('addCardFromDiscovery', 'sonarr', 'http://nas.lan:8989');
+        ->call('addCardFromDiscovery', 'sonarr', 'http://nas.lan:8989')
+        ->assertDispatched('switch-sidebar-tab', tab: 'cards')
+        ->assertDispatched('prefill-card', name: 'sonarr', url: 'http://nas.lan:8989');
 
-    $card = Card::where('name', 'sonarr')->sole();
-
-    expect($card->type)->toBe(CardType::Link)
-        ->and($card->url)->toBe('http://nas.lan:8989');
+    expect(Card::where('name', 'sonarr')->exists())->toBeFalse();
 });
 
 it('creates an ssh scan target with a user and port', function () {
@@ -121,6 +142,25 @@ it('discovers containers over ssh, surfacing only published ports', function () 
     expect($component->get('discovered'))->toHaveCount(1)
         ->and($component->get('discovered')[0]['name'])->toBe('sonarr')
         ->and($component->get('discovered')[0]['url'])->toBe('http://192.168.1.12:8989');
+});
+
+it('prefers the traefik host label over the raw ip:port when discovering over ssh', function () {
+    $machine = Machine::factory()->ssh()->create(['host' => '192.168.1.12']);
+
+    $lines = json_encode([
+        'Names' => 'sonarr',
+        'Image' => 'linuxserver/sonarr',
+        'Ports' => '0.0.0.0:8989->8989/tcp',
+        'Labels' => 'traefik.enable=true,traefik.http.routers.sonarr.rule=Host(`sonarr.dev.local.test`)',
+    ]);
+
+    Process::fake([
+        'ssh*' => Process::result(output: $lines, exitCode: 0),
+    ]);
+
+    $component = Livewire::test('machine-manager')->call('discover', $machine->id);
+
+    expect($component->get('discovered')[0]['url'])->toBe('http://sonarr.dev.local.test');
 });
 
 it('surfaces the ssh error output when discovery fails', function () {

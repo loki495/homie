@@ -96,3 +96,21 @@ it('deletes a card and its output record', function () {
     expect(Card::find($card->id))->toBeNull();
     expect(CardOutput::find($output->id))->toBeNull();
 });
+
+it('prefills the new-card form from a discovery result without saving it', function () {
+    $component = Livewire::test('card-manager')
+        ->call('prefillFromDiscovery', 'sonarr', 'http://sonarr.dev.local.test')
+        ->assertSet('name', 'sonarr')
+        ->assertSet('type', 'link')
+        ->assertSet('url', 'http://sonarr.dev.local.test')
+        ->assertSet('editingId', null);
+
+    expect(Card::where('name', 'sonarr')->exists())->toBeFalse();
+
+    $component->set('type', 'api')
+        ->set('base_url', 'http://sonarr.dev.local.test')
+        ->set('provider', 'sonarr')
+        ->call('save');
+
+    expect(Card::where('name', 'sonarr')->sole()->type)->toBe(CardType::Api);
+});

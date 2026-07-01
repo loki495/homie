@@ -15,6 +15,8 @@
             }
         </script>
 
+        @fluxAppearance
+
         @vite(['resources/css/app.css', 'resources/js/app.js'])
 
         @livewireStyles
@@ -24,5 +26,6 @@
         <livewire:sidebar />
 
         @livewireScripts
+        @fluxScripts
     </body>
 </html>

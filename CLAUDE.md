@@ -1,7 +1,22 @@
 # Homie — project context
 
-Self-hosted home lab dashboard. Laravel 13 + Livewire 4 (SFC) + Alpine.js + Tailwind v4.
-SQLite. Dockerized dev environment behind Traefik (`homie.dev.local.test`).
+Self-hosted home lab dashboard. Laravel 13 + Livewire 4 (SFC) + Alpine.js + Tailwind v4 +
+Flux UI (free tier). SQLite. Dockerized dev environment behind Traefik
+(`homie.dev.local.test`).
+
+## UI components
+
+Sidebar manager forms/buttons (Groups, Cards, Discovery) use Flux UI components
+(`<flux:input>`, `<flux:select>`, `<flux:textarea>`, `<flux:button>`) — free tier only,
+no Pro license. Delete actions use `variant="ghost"` with a `!text-rose-*` class
+override (not `variant="danger"`, which renders a filled red button — Flux's own
+`text-zinc-800`/`dark:text-white` ghost-variant classes otherwise win the cascade tie
+against a plain color override, so the `!` important modifier is required). The
+off-canvas sidebar shell and the Groups/Cards/Discovery tab bar remain custom
+Alpine — no Flux equivalent was worth the migration risk for either. Dark mode stays
+on the project's own `Alpine.store('theme')` + inline FOUC-prevention script; Flux's
+`@fluxAppearance`/`@fluxScripts` directives are included for the components' own
+needs but the toggle button itself is not Flux's.
 
 ## Design principle: this is a distributable app
 

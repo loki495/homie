@@ -175,104 +175,45 @@ new class extends Component
 
 <div class="space-y-6">
     <form wire:submit="save" class="space-y-3 rounded-xl border border-slate-200 p-4 dark:border-slate-700">
-        <label class="block text-sm font-medium text-slate-500 dark:text-slate-400">
-            {{ $editingId ? 'Edit card' : 'New card' }}
-        </label>
+        <flux:heading size="sm">{{ $editingId ? 'Edit card' : 'New card' }}</flux:heading>
 
-        <input
-            type="text"
-            wire:model="name"
-            placeholder="Name"
-            class="w-full rounded-lg border-slate-300 px-3.5 py-3 text-base sm:text-sm dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 dark:placeholder-slate-400"
-        >
-        @error('name')
-            <p class="text-sm text-rose-500">{{ $message }}</p>
-        @enderror
+        <flux:input wire:model="name" placeholder="Name" />
 
         <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <select
-                wire:model.live="type"
-                class="w-full rounded-lg border-slate-300 px-3.5 py-3 text-base sm:text-sm dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100"
-            >
+            <flux:select wire:model.live="type">
                 @foreach ($this->cardTypes() as $cardType)
-                    <option value="{{ $cardType->value }}">{{ ucfirst($cardType->value) }}</option>
+                    <flux:select.option value="{{ $cardType->value }}">{{ ucfirst($cardType->value) }}</flux:select.option>
                 @endforeach
-            </select>
+            </flux:select>
 
-            <select
-                wire:model="group_id"
-                class="w-full rounded-lg border-slate-300 px-3.5 py-3 text-base sm:text-sm dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100"
-            >
-                <option value="">No group</option>
+            <flux:select wire:model="group_id">
+                <flux:select.option value="">No group</flux:select.option>
                 @foreach ($this->groupOptions() as $group)
-                    <option value="{{ $group->id }}">{{ $group->name }}</option>
+                    <flux:select.option value="{{ $group->id }}">{{ $group->name }}</flux:select.option>
                 @endforeach
-            </select>
+            </flux:select>
         </div>
 
         @if ($type === 'link')
-            <input
-                type="text"
-                wire:model="url"
-                placeholder="https://example.lan"
-                class="w-full rounded-lg border-slate-300 px-3.5 py-3 text-base sm:text-sm dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 dark:placeholder-slate-400"
-            >
-            @error('url')
-                <p class="text-sm text-rose-500">{{ $message }}</p>
-            @enderror
+            <flux:input wire:model="url" placeholder="https://example.lan" />
         @elseif ($type === 'output')
-            <textarea
-                wire:model="command"
-                rows="2"
-                placeholder="df -h /"
-                class="w-full rounded-lg border-slate-300 px-3.5 py-3 font-mono text-base sm:text-sm dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 dark:placeholder-slate-400"
-            ></textarea>
-            @error('command')
-                <p class="text-sm text-rose-500">{{ $message }}</p>
-            @enderror
+            <flux:textarea wire:model="command" rows="2" placeholder="df -h /" class="font-mono" />
         @elseif ($type === 'api')
-            <select
-                wire:model="provider"
-                class="w-full rounded-lg border-slate-300 px-3.5 py-3 text-base sm:text-sm dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100"
-            >
+            <flux:select wire:model="provider">
                 @foreach ($this->apiProviders() as $apiProvider)
-                    <option value="{{ $apiProvider->value }}">{{ $apiProvider->label() }}</option>
+                    <flux:select.option value="{{ $apiProvider->value }}">{{ $apiProvider->label() }}</flux:select.option>
                 @endforeach
-            </select>
-            <input
-                type="text"
-                wire:model="base_url"
-                placeholder="http://nas.lan:8989"
-                class="w-full rounded-lg border-slate-300 px-3.5 py-3 text-base sm:text-sm dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 dark:placeholder-slate-400"
-            >
-            @error('base_url')
-                <p class="text-sm text-rose-500">{{ $message }}</p>
-            @enderror
-            <input
-                type="text"
-                wire:model="api_key"
-                placeholder="API key (optional)"
-                class="w-full rounded-lg border-slate-300 px-3.5 py-3 text-base sm:text-sm dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 dark:placeholder-slate-400"
-            >
+            </flux:select>
+            <flux:input wire:model="base_url" placeholder="http://nas.lan:8989" />
+            <flux:input wire:model="api_key" placeholder="API key (optional)" />
         @endif
 
         <div class="flex gap-2">
-            <button
-                type="submit"
-                wire:loading.attr="disabled"
-                wire:target="save"
-                class="flex-1 rounded-lg bg-slate-800 px-4 py-3 text-sm font-semibold text-white active:bg-slate-700 disabled:opacity-60 dark:bg-slate-100 dark:text-slate-800 dark:active:bg-slate-200"
-            >
+            <flux:button type="submit" variant="primary" class="flex-1">
                 {{ $editingId ? 'Save' : 'Add card' }}
-            </button>
+            </flux:button>
             @if ($editingId)
-                <button
-                    type="button"
-                    wire:click="cancel"
-                    class="rounded-lg bg-slate-100 px-4 py-3 text-sm font-semibold text-slate-600 active:bg-slate-200 dark:bg-slate-700 dark:text-slate-200 dark:active:bg-slate-600"
-                >
-                    Cancel
-                </button>
+                <flux:button type="button" wire:click="cancel">Cancel</flux:button>
             @endif
         </div>
     </form>
@@ -287,27 +228,22 @@ new class extends Component
                     </p>
                 </div>
                 <div class="flex shrink-0 items-center gap-1">
-                    <button
-                        type="button"
+                    <flux:button
+                        icon="pencil"
+                        variant="ghost"
+                        size="sm"
                         wire:click="edit({{ $card->id }})"
-                        wire:loading.attr="disabled"
-                        wire:target="edit({{ $card->id }})"
                         aria-label="Edit {{ $card->name }}"
-                        class="flex h-10 w-10 items-center justify-center rounded-full text-slate-400 hover:bg-slate-100 hover:text-slate-600 disabled:opacity-60 dark:hover:bg-slate-700 dark:hover:text-slate-200"
-                    >
-                        <x-icons.pencil class="h-5 w-5" />
-                    </button>
-                    <button
-                        type="button"
+                    />
+                    <flux:button
+                        icon="trash"
+                        variant="ghost"
+                        size="sm"
+                        class="!text-rose-500 hover:!text-rose-600 dark:!text-rose-400 dark:hover:!text-rose-300"
                         wire:click="delete({{ $card->id }})"
                         wire:confirm="Delete this card?"
-                        wire:loading.attr="disabled"
-                        wire:target="delete({{ $card->id }})"
                         aria-label="Delete {{ $card->name }}"
-                        class="flex h-10 w-10 items-center justify-center rounded-full text-rose-500 hover:bg-rose-50 hover:text-rose-600 disabled:opacity-60 dark:text-rose-400 dark:hover:bg-rose-500/10 dark:hover:text-rose-300"
-                    >
-                        <x-icons.trash class="h-5 w-5" />
-                    </button>
+                    />
                 </div>
             </li>
         @empty

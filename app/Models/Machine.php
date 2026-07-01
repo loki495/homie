@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Enums\DiscoveryMethod;
 use Database\Factories\MachineFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -17,5 +18,17 @@ class Machine extends Model
         'name',
         'host',
         'description',
+        'discovery_method',
+        'ssh_user',
+        'ssh_port',
     ];
+
+    #[\Override]
+    protected function casts(): array
+    {
+        return [
+            'discovery_method' => DiscoveryMethod::class,
+            'ssh_port' => 'integer',
+        ];
+    }
 }

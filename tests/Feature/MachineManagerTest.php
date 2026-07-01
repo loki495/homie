@@ -3,10 +3,12 @@
 declare(strict_types=1);
 
 use App\Enums\CardType;
+use App\Enums\DiscoveryMethod;
 use App\Models\Card;
 use App\Models\Machine;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Process;
 use Livewire\Livewire;
 
 it('creates a scan target', function () {
@@ -84,4 +86,51 @@ it('creates a link card from a discovery result', function () {
 
     expect($card->type)->toBe(CardType::Link)
         ->and($card->url)->toBe('http://nas.lan:8989');
+});
+
+it('creates an ssh scan target with a user and port', function () {
+    Livewire::test('machine-manager')
+        ->set('name', 'Local')
+        ->set('host', '192.168.1.12')
+        ->set('discovery_method', 'ssh')
+        ->set('ssh_user', 'andres')
+        ->set('ssh_port', '2222')
+        ->call('save');
+
+    $machine = Machine::where('name', 'Local')->sole();
+
+    expect($machine->discovery_method)->toBe(DiscoveryMethod::Ssh)
+        ->and($machine->ssh_user)->toBe('andres')
+        ->and($machine->ssh_port)->toBe(2222);
+});
+
+it('discovers containers over ssh, surfacing only published ports', function () {
+    $machine = Machine::factory()->ssh()->create(['host' => '192.168.1.12']);
+
+    $lines = implode("\n", [
+        json_encode(['Names' => 'sonarr', 'Image' => 'linuxserver/sonarr', 'Ports' => '0.0.0.0:8989->8989/tcp']),
+        json_encode(['Names' => 'internal-cache', 'Image' => 'redis', 'Ports' => '6379/tcp']),
+    ]);
+
+    Process::fake([
+        'ssh*' => Process::result(output: $lines, exitCode: 0),
+    ]);
+
+    $component = Livewire::test('machine-manager')->call('discover', $machine->id);
+
+    expect($component->get('discovered'))->toHaveCount(1)
+        ->and($component->get('discovered')[0]['name'])->toBe('sonarr')
+        ->and($component->get('discovered')[0]['url'])->toBe('http://192.168.1.12:8989');
+});
+
+it('surfaces the ssh error output when discovery fails', function () {
+    $machine = Machine::factory()->ssh()->create();
+
+    Process::fake([
+        'ssh*' => Process::result(output: '', errorOutput: 'Permission denied (publickey).', exitCode: 255),
+    ]);
+
+    $component = Livewire::test('machine-manager')->call('discover', $machine->id);
+
+    expect($component->get('scanError'))->toContain('Permission denied (publickey).');
 });

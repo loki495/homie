@@ -161,9 +161,9 @@ new class extends Component
 };
 ?>
 
-<div class="space-y-4">
-    <form wire:submit="save" class="space-y-2 rounded-md border border-slate-200 p-3 dark:border-slate-700">
-        <label class="block text-xs font-medium text-slate-500 dark:text-slate-400">
+<div class="space-y-6">
+    <form wire:submit="save" class="space-y-3 rounded-xl border border-slate-200 p-4 dark:border-slate-700">
+        <label class="block text-sm font-medium text-slate-500 dark:text-slate-400">
             {{ $editingId ? 'Edit card' : 'New card' }}
         </label>
 
@@ -171,16 +171,16 @@ new class extends Component
             type="text"
             wire:model="name"
             placeholder="Name"
-            class="w-full rounded-md border-slate-300 text-sm dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100"
+            class="w-full rounded-lg border-slate-300 px-3.5 py-3 text-base sm:text-sm dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 dark:placeholder-slate-400"
         >
         @error('name')
-            <p class="text-xs text-rose-500">{{ $message }}</p>
+            <p class="text-sm text-rose-500">{{ $message }}</p>
         @enderror
 
-        <div class="grid grid-cols-2 gap-2">
+        <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <select
                 wire:model.live="type"
-                class="rounded-md border-slate-300 text-sm dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100"
+                class="w-full rounded-lg border-slate-300 px-3.5 py-3 text-base sm:text-sm dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100"
             >
                 @foreach ($this->cardTypes() as $cardType)
                     <option value="{{ $cardType->value }}">{{ ucfirst($cardType->value) }}</option>
@@ -189,7 +189,7 @@ new class extends Component
 
             <select
                 wire:model="group_id"
-                class="rounded-md border-slate-300 text-sm dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100"
+                class="w-full rounded-lg border-slate-300 px-3.5 py-3 text-base sm:text-sm dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100"
             >
                 <option value="">No group</option>
                 @foreach ($this->groupOptions() as $group)
@@ -203,25 +203,25 @@ new class extends Component
                 type="text"
                 wire:model="url"
                 placeholder="https://example.lan"
-                class="w-full rounded-md border-slate-300 text-sm dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100"
+                class="w-full rounded-lg border-slate-300 px-3.5 py-3 text-base sm:text-sm dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 dark:placeholder-slate-400"
             >
             @error('url')
-                <p class="text-xs text-rose-500">{{ $message }}</p>
+                <p class="text-sm text-rose-500">{{ $message }}</p>
             @enderror
         @elseif ($type === 'output')
             <textarea
                 wire:model="command"
                 rows="2"
                 placeholder="df -h /"
-                class="w-full rounded-md border-slate-300 font-mono text-sm dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100"
+                class="w-full rounded-lg border-slate-300 px-3.5 py-3 font-mono text-base sm:text-sm dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 dark:placeholder-slate-400"
             ></textarea>
             @error('command')
-                <p class="text-xs text-rose-500">{{ $message }}</p>
+                <p class="text-sm text-rose-500">{{ $message }}</p>
             @enderror
         @elseif ($type === 'api')
             <select
                 wire:model="provider"
-                class="w-full rounded-md border-slate-300 text-sm dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100"
+                class="w-full rounded-lg border-slate-300 px-3.5 py-3 text-base sm:text-sm dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100"
             >
                 @foreach ($this->apiProviders() as $apiProvider)
                     <option value="{{ $apiProvider->value }}">{{ $apiProvider->label() }}</option>
@@ -231,31 +231,31 @@ new class extends Component
                 type="text"
                 wire:model="base_url"
                 placeholder="http://nas.lan:8989"
-                class="w-full rounded-md border-slate-300 text-sm dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100"
+                class="w-full rounded-lg border-slate-300 px-3.5 py-3 text-base sm:text-sm dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 dark:placeholder-slate-400"
             >
             @error('base_url')
-                <p class="text-xs text-rose-500">{{ $message }}</p>
+                <p class="text-sm text-rose-500">{{ $message }}</p>
             @enderror
             <input
                 type="text"
                 wire:model="api_key"
                 placeholder="API key (optional)"
-                class="w-full rounded-md border-slate-300 text-sm dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100"
+                class="w-full rounded-lg border-slate-300 px-3.5 py-3 text-base sm:text-sm dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 dark:placeholder-slate-400"
             >
         @endif
 
         <div class="flex gap-2">
             <button
                 type="submit"
-                class="rounded-md bg-slate-800 px-3 py-1.5 text-xs font-semibold text-white dark:bg-slate-100 dark:text-slate-800"
+                class="flex-1 rounded-lg bg-slate-800 px-4 py-3 text-sm font-semibold text-white active:bg-slate-700 dark:bg-slate-100 dark:text-slate-800 dark:active:bg-slate-200"
             >
-                {{ $editingId ? 'Save' : 'Add' }}
+                {{ $editingId ? 'Save' : 'Add card' }}
             </button>
             @if ($editingId)
                 <button
                     type="button"
                     wire:click="cancel"
-                    class="rounded-md bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-600 dark:bg-slate-700 dark:text-slate-200"
+                    class="rounded-lg bg-slate-100 px-4 py-3 text-sm font-semibold text-slate-600 active:bg-slate-200 dark:bg-slate-700 dark:text-slate-200 dark:active:bg-slate-600"
                 >
                     Cancel
                 </button>
@@ -263,26 +263,32 @@ new class extends Component
         </div>
     </form>
 
-    <ul class="space-y-1">
+    <ul class="space-y-2">
         @forelse ($this->cards() as $card)
-            <li class="flex items-center justify-between rounded-md border border-slate-200 px-3 py-2 dark:border-slate-700">
+            <li class="flex items-center justify-between gap-3 rounded-xl border border-slate-200 p-3.5 dark:border-slate-700">
                 <div class="min-w-0">
                     <p class="truncate text-sm text-slate-700 dark:text-slate-200">{{ $card->name }}</p>
-                    <p class="text-xs text-slate-400 dark:text-slate-500">
+                    <p class="text-sm text-slate-400 dark:text-slate-500">
                         {{ ucfirst($card->type->value) }} &middot; {{ $card->group?->name ?? 'Ungrouped' }}
                     </p>
                 </div>
-                <div class="flex shrink-0 items-center gap-2 text-xs">
-                    <button type="button" wire:click="edit({{ $card->id }})" class="text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200">
-                        Edit
+                <div class="flex shrink-0 items-center gap-1">
+                    <button
+                        type="button"
+                        wire:click="edit({{ $card->id }})"
+                        aria-label="Edit {{ $card->name }}"
+                        class="flex h-10 w-10 items-center justify-center rounded-full text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-700 dark:hover:text-slate-200"
+                    >
+                        <x-icons.pencil class="h-5 w-5" />
                     </button>
                     <button
                         type="button"
                         wire:click="delete({{ $card->id }})"
                         wire:confirm="Delete this card?"
-                        class="text-rose-500 hover:text-rose-600"
+                        aria-label="Delete {{ $card->name }}"
+                        class="flex h-10 w-10 items-center justify-center rounded-full text-slate-400 hover:bg-rose-50 hover:text-rose-500 dark:hover:bg-rose-500/10 dark:hover:text-rose-400"
                     >
-                        Delete
+                        <x-icons.trash class="h-5 w-5" />
                     </button>
                 </div>
             </li>

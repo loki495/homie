@@ -16,6 +16,9 @@ return new class extends Migration
             $table->string('name');
             $table->string('host');
             $table->text('description')->nullable();
+            $table->string('discovery_method')->default('docker');
+            $table->string('ssh_user')->nullable();
+            $table->unsignedInteger('ssh_port')->nullable();
             $table->timestamps();
         });
     }

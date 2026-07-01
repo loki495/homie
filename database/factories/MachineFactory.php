@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Database\Factories;
 
+use App\Enums\DiscoveryMethod;
 use App\Models\Machine;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
@@ -21,6 +22,17 @@ class MachineFactory extends Factory
             'name' => ucfirst(fake()->domainWord()),
             'host' => fake()->domainWord().'.lan',
             'description' => fake()->optional()->sentence(),
+            'discovery_method' => DiscoveryMethod::Docker,
+            'ssh_user' => null,
+            'ssh_port' => null,
         ];
+    }
+
+    public function ssh(): static
+    {
+        return $this->state(fn (array $attributes): array => [
+            'discovery_method' => DiscoveryMethod::Ssh,
+            'ssh_user' => 'root',
+        ]);
     }
 }

@@ -20,9 +20,13 @@ connections, card order, and groups — is user-configured data, not code.
 
 ## Planned features
 
-- Service cards that open the linked site on click
+- Service cards that open the linked site on click, each with an optional icon — paste
+  any image URL, or search recognized self-hosted apps (sonarr, plex, etc.) against the
+  free homarr-labs/dashboard-icons index for a one-click suggestion
 - Docker service discovery: save a scan target (name + host) in Settings, run a manual
-  scan against its Docker Engine API, and turn discovered containers into cards
+  scan against its Docker Engine API (or `docker ps` over SSH), and turn discovered
+  containers into cards. Prefers a container's Traefik `Host()` label for the URL when
+  present, so services with no host-published port are still discovered correctly
 - Manual custom links for anything discovery doesn't cover
 - Editable "output" cards: user-defined shell commands (local or remote, e.g. via SSH),
   run non-blockingly on each page load, rendering raw output (disk space, load, etc.)

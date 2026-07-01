@@ -4,6 +4,7 @@ use App\Enums\ApiProvider;
 use App\Enums\CardType;
 use App\Models\Card;
 use App\Models\Group;
+use App\Support\DashboardIcons;
 use Illuminate\Database\Eloquent\Collection;
 use Livewire\Attributes\On;
 use Livewire\Component;
@@ -28,6 +29,13 @@ new class extends Component
 
     public string $api_key = '';
 
+    public string $icon = '';
+
+    public string $iconQuery = '';
+
+    /** @var list<array{name: string, url: string}> */
+    public array $iconResults = [];
+
     #[On('prefill-card')]
     public function prefillFromDiscovery(string $name, string $url): void
     {
@@ -35,7 +43,21 @@ new class extends Component
         $this->name = $name;
         $this->type = 'link';
         $this->url = $url;
+        $this->iconQuery = $name;
+        $this->iconResults = app(DashboardIcons::class)->search($name);
         $this->dispatch('scroll-sidebar-top');
+    }
+
+    public function updatedIconQuery(): void
+    {
+        $this->iconResults = app(DashboardIcons::class)->search($this->iconQuery);
+    }
+
+    public function selectIcon(string $url): void
+    {
+        $this->icon = $url;
+        $this->iconQuery = '';
+        $this->iconResults = [];
     }
 
     /**
@@ -66,6 +88,7 @@ new class extends Component
             'name' => $this->name,
             'type' => CardType::from($this->type),
             'group_id' => $this->group_id,
+            'icon' => $this->icon !== '' ? $this->icon : null,
             'url' => match ($this->type) {
                 'link' => $this->url,
                 'api' => $this->base_url,
@@ -112,6 +135,7 @@ new class extends Component
         $this->provider = $card->api?->provider?->value ?? 'generic';
         $this->base_url = $card->api?->base_url ?? '';
         $this->api_key = $card->api?->api_key ?? '';
+        $this->icon = (string) $card->icon;
         $this->dispatch('scroll-sidebar-top');
     }
 
@@ -122,7 +146,7 @@ new class extends Component
 
     protected function resetForm(): void
     {
-        $this->reset(['editingId', 'name', 'group_id', 'url', 'command', 'base_url', 'api_key']);
+        $this->reset(['editingId', 'name', 'group_id', 'url', 'command', 'base_url', 'api_key', 'icon', 'iconQuery', 'iconResults']);
         $this->type = 'link';
         $this->provider = 'generic';
         $this->resetValidation();
@@ -179,6 +203,35 @@ new class extends Component
 
         <flux:input wire:model="name" placeholder="Name" />
 
+        <div class="space-y-2">
+            <div class="flex items-center gap-2">
+                @if ($icon)
+                    <img src="{{ $icon }}" alt="" class="h-9 w-9 shrink-0 rounded-md border border-slate-200 object-contain p-1 dark:border-slate-600">
+                @else
+                    <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-dashed border-slate-300 dark:border-slate-600"></div>
+                @endif
+                <flux:input wire:model="icon" placeholder="Icon URL (optional)" class="flex-1" />
+                @if ($icon)
+                    <flux:button icon="x-mark" variant="ghost" size="sm" wire:click="$set('icon', '')" aria-label="Clear icon" />
+                @endif
+            </div>
+            <flux:input wire:model.live.debounce.400ms="iconQuery" placeholder="Search icons, e.g. sonarr" />
+            @if (count($iconResults))
+                <div class="grid grid-cols-4 gap-2 sm:grid-cols-6">
+                    @foreach ($iconResults as $result)
+                        <button
+                            type="button"
+                            wire:click="selectIcon('{{ $result['url'] }}')"
+                            class="flex flex-col items-center gap-1 rounded-md border border-slate-200 p-2 hover:border-slate-400 dark:border-slate-600 dark:hover:border-slate-400"
+                        >
+                            <img src="{{ $result['url'] }}" alt="" class="h-6 w-6 object-contain">
+                            <span class="w-full truncate text-center text-xs text-slate-500 dark:text-slate-400">{{ $result['name'] }}</span>
+                        </button>
+                    @endforeach
+                </div>
+            @endif
+        </div>
+
         <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <flux:select wire:model.live="type">
                 @foreach ($this->cardTypes() as $cardType)
@@ -221,11 +274,16 @@ new class extends Component
     <ul class="space-y-2">
         @forelse ($this->cards() as $card)
             <li class="flex items-center justify-between gap-3 rounded-xl border border-slate-200 p-3.5 dark:border-slate-700">
-                <div class="min-w-0">
-                    <p class="truncate text-sm text-slate-700 dark:text-slate-200">{{ $card->name }}</p>
-                    <p class="text-sm text-slate-400 dark:text-slate-500">
-                        {{ ucfirst($card->type->value) }} &middot; {{ $card->group?->name ?? 'Ungrouped' }}
-                    </p>
+                <div class="flex min-w-0 items-center gap-2.5">
+                    @if ($card->icon)
+                        <img src="{{ $card->icon }}" alt="" class="h-8 w-8 shrink-0 rounded-md object-contain">
+                    @endif
+                    <div class="min-w-0">
+                        <p class="truncate text-sm text-slate-700 dark:text-slate-200">{{ $card->name }}</p>
+                        <p class="text-sm text-slate-400 dark:text-slate-500">
+                            {{ ucfirst($card->type->value) }} &middot; {{ $card->group?->name ?? 'Ungrouped' }}
+                        </p>
+                    </div>
                 </div>
                 <div class="flex shrink-0 items-center gap-1">
                     <flux:button

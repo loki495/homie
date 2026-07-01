@@ -53,6 +53,15 @@ new class extends Component
         $this->iconResults = app(DashboardIcons::class)->search($this->iconQuery);
     }
 
+    public function updatedType(string $value): void
+    {
+        if ($value === 'api' && $this->base_url === '' && $this->url !== '') {
+            $this->base_url = $this->url;
+        } elseif ($value === 'link' && $this->url === '' && $this->base_url !== '') {
+            $this->url = $this->base_url;
+        }
+    }
+
     public function selectIcon(string $url): void
     {
         $this->icon = $url;

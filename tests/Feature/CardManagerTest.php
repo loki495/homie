@@ -170,6 +170,16 @@ it('preloads icon suggestions when prefilling from a discovery result', function
         ]);
 });
 
+it('carries the url over when switching from link to api and back', function () {
+    Livewire::test('card-manager')
+        ->set('name', 'Sonarr')
+        ->set('url', 'http://nas.lan:8989')
+        ->set('type', 'api')
+        ->assertSet('base_url', 'http://nas.lan:8989')
+        ->set('type', 'link')
+        ->assertSet('url', 'http://nas.lan:8989');
+});
+
 it('restores the saved icon when editing a card', function () {
     $card = Card::factory()->create(['icon' => 'https://example.test/plex.svg']);
 

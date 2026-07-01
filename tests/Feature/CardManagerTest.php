@@ -7,7 +7,20 @@ use App\Enums\CardType;
 use App\Models\Card;
 use App\Models\CardOutput;
 use App\Models\Group;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Http;
 use Livewire\Livewire;
+
+function fakeDashboardIconsIndex(): void
+{
+    Http::fake([
+        'cdn.jsdelivr.net/*' => Http::response([
+            'sonarr' => ['base' => 'svg', 'aliases' => []],
+        ], 200),
+    ]);
+}
+
+beforeEach(fn () => Cache::flush());
 
 it('creates a link card', function () {
     Livewire::test('card-manager')
@@ -113,4 +126,54 @@ it('prefills the new-card form from a discovery result without saving it', funct
         ->call('save');
 
     expect(Card::where('name', 'sonarr')->sole()->type)->toBe(CardType::Api);
+});
+
+it('saves a manually entered icon url', function () {
+    Livewire::test('card-manager')
+        ->set('name', 'Router')
+        ->set('type', 'link')
+        ->set('url', 'http://192.168.1.1')
+        ->set('icon', 'https://example.test/router.svg')
+        ->call('save');
+
+    expect(Card::where('name', 'Router')->sole()->icon)->toBe('https://example.test/router.svg');
+});
+
+it('searches for matching icons as the icon query changes', function () {
+    fakeDashboardIconsIndex();
+
+    Livewire::test('card-manager')
+        ->set('iconQuery', 'sonarr')
+        ->assertSet('iconResults', [
+            ['name' => 'sonarr', 'url' => 'https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/sonarr.svg'],
+        ]);
+});
+
+it('selects an icon from search results and clears the query', function () {
+    fakeDashboardIconsIndex();
+
+    Livewire::test('card-manager')
+        ->set('iconQuery', 'sonarr')
+        ->call('selectIcon', 'https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/sonarr.svg')
+        ->assertSet('icon', 'https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/sonarr.svg')
+        ->assertSet('iconQuery', '')
+        ->assertSet('iconResults', []);
+});
+
+it('preloads icon suggestions when prefilling from a discovery result', function () {
+    fakeDashboardIconsIndex();
+
+    Livewire::test('card-manager')
+        ->call('prefillFromDiscovery', 'sonarr', 'http://sonarr.dev.local.test')
+        ->assertSet('iconResults', [
+            ['name' => 'sonarr', 'url' => 'https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/sonarr.svg'],
+        ]);
+});
+
+it('restores the saved icon when editing a card', function () {
+    $card = Card::factory()->create(['icon' => 'https://example.test/plex.svg']);
+
+    Livewire::test('card-manager')
+        ->call('edit', $card->id)
+        ->assertSet('icon', 'https://example.test/plex.svg');
 });

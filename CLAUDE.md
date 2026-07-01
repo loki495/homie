@@ -18,6 +18,27 @@ on the project's own `Alpine.store('theme')` + inline FOUC-prevention script; Fl
 `@fluxAppearance`/`@fluxScripts` directives are included for the components' own
 needs but the toggle button itself is not Flux's.
 
+## Card icons
+
+`app/Support/DashboardIcons.php` searches the free homarr-labs/dashboard-icons index
+(no API key) for icons matching common self-hosted app names, letting card creation
+suggest an icon for recognized services. Icons are hotlinked from jsDelivr's CDN —
+never downloaded or cached locally on this app's storage (a deliberate choice: keeps
+things simple, no storage/cleanup concern, matches how Homarr/Dashy do it). The
+`metadata.json` index itself is cached server-side for a day via `Cache::remember`.
+`Card.icon` just stores a plain URL — either a resolved CDN link or a manually pasted
+one, no distinction made at render time.
+
+## Discovery: don't gate on published ports alone
+
+Both `discoverViaDocker` and `discoverViaSsh` in `⚡machine-manager.blade.php` check
+for a Traefik `Host()` label *before* falling back to requiring a host-published port.
+Got this wrong once already (shipped a version that required a published port even
+when a Traefik label was present) — silently dropped every container that's only
+reachable through Traefik's internal Docker-network routing, which is the common case
+when only the reverse proxy itself publishes ports. If touching discovery again, keep
+the label-first ordering.
+
 ## Design principle: this is a distributable app
 
 No lab-specific machine name, hostname, IP, service, or credential should ever be

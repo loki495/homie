@@ -64,7 +64,12 @@ new class extends Component
 
 <div class="rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-800">
     <div class="flex items-center justify-between">
-        <h3 class="text-sm font-semibold text-slate-700 dark:text-slate-200">{{ $card->name }}</h3>
+        <div class="flex min-w-0 items-center gap-2.5">
+            @if ($card->icon)
+                <img src="{{ $card->icon }}" alt="" class="h-5 w-5 shrink-0 object-contain">
+            @endif
+            <h3 class="truncate text-sm font-semibold text-slate-700 dark:text-slate-200">{{ $card->name }}</h3>
+        </div>
         <span @class([
             'h-2 w-2 rounded-full',
             'bg-emerald-500' => $status === 'ok',

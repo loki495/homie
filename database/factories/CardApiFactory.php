@@ -24,7 +24,10 @@ class CardApiFactory extends Factory
             'card_id' => Card::factory()->state(['type' => CardType::Api]),
             'provider' => ApiProvider::Generic,
             'base_url' => fake()->url(),
+            'auth_type' => 'api_key',
             'api_key' => fake()->uuid(),
+            'username' => null,
+            'password' => null,
             'cached_data' => null,
             'last_fetched_at' => null,
         ];

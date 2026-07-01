@@ -29,6 +29,14 @@ things simple, no storage/cleanup concern, matches how Homarr/Dashy do it). The
 `Card.icon` just stores a plain URL — either a resolved CDN link or a manually pasted
 one, no distinction made at render time.
 
+## Card API auth
+
+`card_apis.auth_type` selects between `api_key` (sent as an `X-Api-Key` header — the
+arr-stack convention) and `basic` (username/password, sent via `Http::withBasicAuth`).
+Only one is active at a time based on `auth_type`; the unused fields are nulled out on
+save so stale credentials from a previous auth-type choice don't linger. `password` is
+encrypted at rest the same way `api_key` already was.
+
 ## Discovery: don't gate on published ports alone
 
 Both `discoverViaDocker` and `discoverViaSsh` in `⚡machine-manager.blade.php` check

@@ -19,7 +19,10 @@ class CardApi extends Model
         'card_id',
         'provider',
         'base_url',
+        'auth_type',
         'api_key',
+        'username',
+        'password',
         'cached_data',
         'last_fetched_at',
     ];
@@ -30,6 +33,7 @@ class CardApi extends Model
         return [
             'provider' => ApiProvider::class,
             'api_key' => 'encrypted',
+            'password' => 'encrypted',
             'cached_data' => 'array',
             'last_fetched_at' => 'datetime',
         ];

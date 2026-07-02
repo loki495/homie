@@ -32,7 +32,11 @@ connections, card order, and groups — is user-configured data, not code.
   URL (no port) when the image declares none at all, rather than dropping them
 - Manual custom links for anything discovery doesn't cover
 - Editable "output" cards: user-defined shell commands (local or remote, e.g. via SSH),
-  run non-blockingly on each page load, rendering raw output (disk space, load, etc.)
+  run non-blockingly on each page load, rendering raw output (disk space, load, etc.).
+  If a command SSHes into a saved machine, that machine needs a key saved in Settings
+  first — saving one auto-syncs it to `storage/ssh/{machine-name}` for the command to
+  use (e.g. `-i /var/www/html/storage/ssh/media`); commands referencing a machine with
+  no saved key will fail with a permission-denied error
 - API-connected cards for services with an API — Sonarr and Radarr show series/movies,
   missing, and queue counts; NZBGet shows download speed, status, and remaining size.
   API key or username/password auth, whichever the service needs. Clicking the card

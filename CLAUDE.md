@@ -140,14 +140,22 @@ the UI/database — not one pre-wired to Andres's home lab.
   Composer script wrappers (`composer pint`, `phpstan`, `rector`, `pest`) already do this.
 - SQLite database file lives at `database/database.sqlite`, gitignored (it will hold
   real lab config once the app is used — never commit it).
-- `storage/ssh/` is mounted into the container for the user's own SSH keys, for
-  ad-hoc use in "output" card commands (arbitrary shell commands the user supplies —
-  it's on the user to make sure they run correctly in the container). Gitignored
-  except `.gitkeep`.
-- Machine-based SSH discovery is separate from the above: each `Machine` can store
-  its own encrypted private key (`machines.ssh_private_key`), written to a 0600 temp
-  file only for the duration of a scan. Never read from `storage/ssh/` — keeps
-  discovery credentials scoped per target instead of one shared host-mounted key.
+- `storage/ssh/` is mounted into the container for SSH keys used in "output" card
+  commands (arbitrary shell commands the user supplies — it's on the user to make sure
+  they run correctly in the container). Gitignored except `.gitkeep`.
+- Machine-based SSH discovery keeps its own encrypted private key
+  (`machines.ssh_private_key`), decrypted to a 0600 temp file only for the duration of a
+  scan — discovery itself never reads from `storage/ssh/`.
+- `MachineObserver` (via `MachineSshKeySync`) auto-syncs that same key into
+  `storage/ssh/{slug}` (e.g. `storage/ssh/media`) in plaintext, 0600, on every save —
+  and deletes it if the key is cleared or the machine is deleted. This is a deliberate
+  security tradeoff, confirmed with Andres before building: the DB copy stays encrypted
+  and is decrypted only transiently for scans, but the synced copy sits on disk
+  permanently (still container-internal, but readable by anyone with filesystem access,
+  and it survives container rebuilds since `storage/ssh` is host-mounted) — done to let
+  output-card commands SSH to a machine without duplicating key management. If a machine
+  is renamed, the old slug's file is left behind harmlessly (not cleaned up — a minor
+  known gap, not worth the added complexity to chase).
 
 ## Tooling
 

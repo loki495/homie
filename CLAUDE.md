@@ -59,6 +59,25 @@ call against Andres's own instances — not guessed. Notable per-provider quirks
 Adding a new provider: add the enum case, a Fetcher implementing `ProviderFetcher`, and
 one `match` arm in `ApiProvider::fetcher()` — the widget needs no changes.
 
+## Discovery: host-network containers need an inspect fallback
+
+`docker ps`/`/containers/json` report an empty `Ports` for containers running with
+`--network host` — there's no mapping to report, the container's ports *are* the host's
+ports directly. Without a fallback, every host-network container with no Traefik label
+silently vanished from discovery results (found via a real scan: Home Assistant and
+ESPHome were both missing from a host with 11 running containers). Both
+`discoverViaDocker` and `discoverViaSsh` now do a follow-up lookup for exactly these
+stragglers — `docker inspect` (SSH) or `GET /containers/{id}/json` (API) — and read the
+first port out of `Config.ExposedPorts` (the image's declared `EXPOSE`, present even
+under host networking since it's build-time metadata, not a runtime port mapping).
+This only recovers containers whose image actually declares `EXPOSE` — some (Home
+Assistant, notably) declare none, so they're a genuine dead end short of hardcoding a
+lab-specific default port, which the project's distributability rule forbids. Bridge/
+default-network containers with no port and no label are still correctly excluded — the
+host-network check (`Networks === 'host'` over SSH, `HostConfig.NetworkMode === 'host'`
+via the API) is what gates the fallback, so we don't invent unreachable URLs for
+containers that genuinely have no path to the host.
+
 ## Output/API widgets don't reactively see Card edits
 
 `⚡card-output-widget.blade.php` and `⚡card-api-widget.blade.php` are `lazy`-loaded

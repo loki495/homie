@@ -119,6 +119,54 @@ it('surfaces a traefik-labeled container even with no published port, via the do
         ->and($component->get('discovered')[0]['url'])->toBe('http://sonarr.dev.local.test');
 });
 
+it('falls back to the image-declared exposed port for host-network containers, via the docker api', function () {
+    $machine = Machine::factory()->create(['host' => 'nas.lan']);
+
+    Http::fake([
+        'nas.lan:2375/containers/json' => Http::response([
+            [
+                'Id' => 'abc123',
+                'Names' => ['/homeassistant'],
+                'Image' => 'ghcr.io/home-assistant/home-assistant',
+                'Ports' => [],
+                'HostConfig' => ['NetworkMode' => 'host'],
+            ],
+        ], 200),
+        'nas.lan:2375/containers/abc123/json' => Http::response([
+            'Config' => ['ExposedPorts' => ['8123/tcp' => new stdClass]],
+        ], 200),
+    ]);
+
+    $component = Livewire::test('machine-manager')->call('discover', $machine->id);
+
+    expect($component->get('discovered'))->toHaveCount(1)
+        ->and($component->get('discovered')[0]['name'])->toBe('homeassistant')
+        ->and($component->get('discovered')[0]['url'])->toBe('http://nas.lan:8123');
+});
+
+it('excludes host-network containers whose image declares no exposed port, via the docker api', function () {
+    $machine = Machine::factory()->create(['host' => 'nas.lan']);
+
+    Http::fake([
+        'nas.lan:2375/containers/json' => Http::response([
+            [
+                'Id' => 'abc123',
+                'Names' => ['/homeassistant'],
+                'Image' => 'ghcr.io/home-assistant/home-assistant',
+                'Ports' => [],
+                'HostConfig' => ['NetworkMode' => 'host'],
+            ],
+        ], 200),
+        'nas.lan:2375/containers/abc123/json' => Http::response([
+            'Config' => ['ExposedPorts' => null],
+        ], 200),
+    ]);
+
+    $component = Livewire::test('machine-manager')->call('discover', $machine->id);
+
+    expect($component->get('discovered'))->toBe([]);
+});
+
 it('shows a friendly error when the docker api is unreachable', function () {
     $machine = Machine::factory()->create(['host' => 'unreachable.lan']);
 
@@ -216,6 +264,72 @@ it('surfaces a traefik-labeled container even with no published port, over ssh',
     expect($component->get('discovered'))->toHaveCount(1)
         ->and($component->get('discovered')[0]['name'])->toBe('sonarr')
         ->and($component->get('discovered')[0]['url'])->toBe('http://sonarr.dev.local.test');
+});
+
+it('falls back to the image-declared exposed port for host-network containers, over ssh', function () {
+    $machine = Machine::factory()->ssh()->create(['host' => '192.168.1.6']);
+
+    $psLine = json_encode([
+        'Names' => 'homeassistant',
+        'Image' => 'ghcr.io/home-assistant/home-assistant',
+        'Ports' => '',
+        'Networks' => 'host',
+    ]);
+    $inspectLine = '/homeassistant::{"8123/tcp":{}}';
+
+    Process::fake([
+        'ssh*' => Process::sequence()
+            ->push(Process::result(output: $psLine, exitCode: 0))
+            ->push(Process::result(output: $inspectLine, exitCode: 0)),
+    ]);
+
+    $component = Livewire::test('machine-manager')->call('discover', $machine->id);
+
+    expect($component->get('discovered'))->toHaveCount(1)
+        ->and($component->get('discovered')[0]['name'])->toBe('homeassistant')
+        ->and($component->get('discovered')[0]['url'])->toBe('http://192.168.1.6:8123');
+});
+
+it('excludes host-network containers whose image declares no exposed port, over ssh', function () {
+    $machine = Machine::factory()->ssh()->create(['host' => '192.168.1.6']);
+
+    $psLine = json_encode([
+        'Names' => 'homeassistant',
+        'Image' => 'ghcr.io/home-assistant/home-assistant',
+        'Ports' => '',
+        'Networks' => 'host',
+    ]);
+    $inspectLine = '/homeassistant::null';
+
+    Process::fake([
+        'ssh*' => Process::sequence()
+            ->push(Process::result(output: $psLine, exitCode: 0))
+            ->push(Process::result(output: $inspectLine, exitCode: 0)),
+    ]);
+
+    $component = Livewire::test('machine-manager')->call('discover', $machine->id);
+
+    expect($component->get('discovered'))->toBe([]);
+});
+
+it('does not attempt a port lookup for bridge-network containers with no port or traefik label, over ssh', function () {
+    $machine = Machine::factory()->ssh()->create(['host' => '192.168.1.6']);
+
+    $psLine = json_encode([
+        'Names' => 'internal-cache',
+        'Image' => 'redis',
+        'Ports' => '',
+        'Networks' => 'docker_default',
+    ]);
+
+    Process::fake([
+        'ssh*' => Process::result(output: $psLine, exitCode: 0),
+    ]);
+
+    $component = Livewire::test('machine-manager')->call('discover', $machine->id);
+
+    expect($component->get('discovered'))->toBe([]);
+    Process::assertRanTimes(fn ($process): bool => str_starts_with((string) $process->command, 'ssh '), 1);
 });
 
 it('surfaces the ssh error output when discovery fails', function () {

@@ -50,6 +50,12 @@
     @elseif ($card->type === \App\Enums\CardType::Output)
         <livewire:card-output-widget :card="$card" :key="'card-output-'.$card->id" lazy />
     @elseif ($card->type === \App\Enums\CardType::Api)
-        <livewire:card-api-widget :card="$card" :key="'card-api-'.$card->id" lazy />
+        @if ($editing)
+            <livewire:card-api-widget :card="$card" :key="'card-api-'.$card->id" lazy />
+        @else
+            <a href="{{ $card->url }}" target="_blank" rel="noopener" class="block">
+                <livewire:card-api-widget :card="$card" :key="'card-api-'.$card->id" lazy />
+            </a>
+        @endif
     @endif
 </div>

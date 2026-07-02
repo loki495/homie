@@ -37,6 +37,28 @@ Only one is active at a time based on `auth_type`; the unused fields are nulled 
 save so stale credentials from a previous auth-type choice don't linger. `password` is
 encrypted at rest the same way `api_key` already was.
 
+## Provider-specific API stats
+
+`ApiProvider::fetcher()` maps each enum case to an `App\Support\ApiProviders\*Fetcher`
+(implementing `ProviderFetcher`), or `null` for providers with no integration yet
+(currently Prowlarr). Each fetcher does its own HTTP calls via the shared
+`ApiHttpClient::for($api)` helper (applies the card's `auth_type`) and returns
+`{status, summary, stats[], raw}` — `stats` is a small list of label/value pairs
+rendered as chips on the card-api-widget instead of the generic "HTTP 200" line.
+Endpoint shapes were verified against the gethomepage/homepage widget source (a mature
+OSS project with working Sonarr/Radarr/NZBGet integrations) plus a live Sonarr/Radarr
+call against Andres's own instances — not guessed. Notable per-provider quirks:
+- Sonarr: `/api/v3/series` (count), `/api/v3/queue` and `/api/v3/wanted/missing` both
+  paginated with a `totalRecords` field — request `pageSize=1` to avoid pulling the
+  full list just for the count.
+- Radarr v3 has no `/wanted/missing` endpoint (only existed in v1). Missing count is
+  computed client-side from `/api/v3/movie`: monitored && !hasFile.
+- NZBGet doesn't use an API key — it's HTTP Basic Auth (`ControlUsername`/
+  `ControlPassword`), a JSON-RPC POST to `/jsonrpc` with `{"method": "status"}`. This is
+  exactly what `auth_type = 'basic'` was built for.
+Adding a new provider: add the enum case, a Fetcher implementing `ProviderFetcher`, and
+one `match` arm in `ApiProvider::fetcher()` — the widget needs no changes.
+
 ## Output/API widgets don't reactively see Card edits
 
 `⚡card-output-widget.blade.php` and `⚡card-api-widget.blade.php` are `lazy`-loaded

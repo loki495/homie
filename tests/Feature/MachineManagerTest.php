@@ -144,7 +144,7 @@ it('falls back to the image-declared exposed port for host-network containers, v
         ->and($component->get('discovered')[0]['url'])->toBe('http://nas.lan:8123');
 });
 
-it('excludes host-network containers whose image declares no exposed port, via the docker api', function () {
+it('still surfaces host-network containers with a bare host url when the image declares no exposed port, via the docker api', function () {
     $machine = Machine::factory()->create(['host' => 'nas.lan']);
 
     Http::fake([
@@ -164,7 +164,9 @@ it('excludes host-network containers whose image declares no exposed port, via t
 
     $component = Livewire::test('machine-manager')->call('discover', $machine->id);
 
-    expect($component->get('discovered'))->toBe([]);
+    expect($component->get('discovered'))->toHaveCount(1)
+        ->and($component->get('discovered')[0]['name'])->toBe('homeassistant')
+        ->and($component->get('discovered')[0]['url'])->toBe('http://nas.lan');
 });
 
 it('shows a friendly error when the docker api is unreachable', function () {
@@ -290,7 +292,7 @@ it('falls back to the image-declared exposed port for host-network containers, o
         ->and($component->get('discovered')[0]['url'])->toBe('http://192.168.1.6:8123');
 });
 
-it('excludes host-network containers whose image declares no exposed port, over ssh', function () {
+it('still surfaces host-network containers with a bare host url when the image declares no exposed port, over ssh', function () {
     $machine = Machine::factory()->ssh()->create(['host' => '192.168.1.6']);
 
     $psLine = json_encode([
@@ -309,7 +311,32 @@ it('excludes host-network containers whose image declares no exposed port, over 
 
     $component = Livewire::test('machine-manager')->call('discover', $machine->id);
 
-    expect($component->get('discovered'))->toBe([]);
+    expect($component->get('discovered'))->toHaveCount(1)
+        ->and($component->get('discovered')[0]['name'])->toBe('homeassistant')
+        ->and($component->get('discovered')[0]['url'])->toBe('http://192.168.1.6');
+});
+
+it('still surfaces a host-network container even if the docker inspect lookup itself fails, over ssh', function () {
+    $machine = Machine::factory()->ssh()->create(['host' => '192.168.1.6']);
+
+    $psLine = json_encode([
+        'Names' => 'homeassistant',
+        'Image' => 'ghcr.io/home-assistant/home-assistant',
+        'Ports' => '',
+        'Networks' => 'host',
+    ]);
+
+    Process::fake([
+        'ssh*' => Process::sequence()
+            ->push(Process::result(output: $psLine, exitCode: 0))
+            ->push(Process::result(output: '', errorOutput: 'no such container', exitCode: 1)),
+    ]);
+
+    $component = Livewire::test('machine-manager')->call('discover', $machine->id);
+
+    expect($component->get('discovered'))->toHaveCount(1)
+        ->and($component->get('discovered')[0]['name'])->toBe('homeassistant')
+        ->and($component->get('discovered')[0]['url'])->toBe('http://192.168.1.6');
 });
 
 it('does not attempt a port lookup for bridge-network containers with no port or traefik label, over ssh', function () {

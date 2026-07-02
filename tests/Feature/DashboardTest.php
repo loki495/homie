@@ -2,9 +2,28 @@
 
 declare(strict_types=1);
 
+use App\Enums\CardType;
 use App\Models\Card;
+use App\Models\CardApi;
 use App\Models\Group;
 use Livewire\Livewire;
+
+it('wraps api cards in a link to their url outside arrange mode', function () {
+    $card = Card::factory()->create(['type' => CardType::Api, 'url' => 'http://sonarr.lan']);
+    CardApi::factory()->create(['card_id' => $card->id, 'base_url' => 'http://sonarr.lan']);
+
+    Livewire::test('dashboard')
+        ->assertSeeHtml('href="http://sonarr.lan"');
+});
+
+it('does not wrap api cards in a link while arranging', function () {
+    $card = Card::factory()->create(['type' => CardType::Api, 'url' => 'http://sonarr.lan']);
+    CardApi::factory()->create(['card_id' => $card->id, 'base_url' => 'http://sonarr.lan']);
+
+    Livewire::test('dashboard')
+        ->call('toggleEditing')
+        ->assertDontSeeHtml('href="http://sonarr.lan"');
+});
 
 it('renders groups with their cards and ungrouped cards', function () {
     $group = Group::factory()->create(['name' => 'Media']);

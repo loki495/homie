@@ -158,13 +158,17 @@ new class extends Component
 
                 // Host-network containers never appear in `Ports` (there's no mapping
                 // to publish — the container's ports are the host's ports directly), so
-                // fall back to whatever port the image itself declared via EXPOSE.
+                // fall back to whatever port the image itself declared via EXPOSE. Still
+                // surface it with just the host if the image declares no port at all —
+                // it's reachable, we just don't know at which port, so leave that for
+                // the user to fill in when they add the card.
                 if (($container['HostConfig']['NetworkMode'] ?? null) === 'host') {
                     $port = $this->hostNetworkPortViaDockerApi($base, $container['Id']);
-
-                    if ($port) {
-                        $results[] = ['name' => $name, 'image' => $image, 'url' => 'http://'.$host.':'.$port];
-                    }
+                    $results[] = [
+                        'name' => $name,
+                        'image' => $image,
+                        'url' => $port ? 'http://'.$host.':'.$port : 'http://'.$host,
+                    ];
                 }
             }
 
@@ -275,11 +279,17 @@ new class extends Component
     }
 
     /**
+     * Every container in $needsPortLookup ends up in $results — with a port if the
+     * image declares one via EXPOSE, otherwise a bare host URL so it still shows up in
+     * discovery for the user to fill in the port manually.
+     *
      * @param  array<string, string>  $needsPortLookup  Container name => image.
      * @param  list<array{name: string, image: string, url: string}>  $results  Appended to by reference.
      */
     private function resolveHostNetworkPortsViaSsh(Machine $machine, ?string $identityFile, array $needsPortLookup, array &$results): void
     {
+        $resolved = [];
+
         $inspectTargets = implode(' ', array_map('escapeshellarg', array_keys($needsPortLookup)));
         $command = $this->sshCommand(
             $machine,
@@ -289,26 +299,35 @@ new class extends Component
 
         $result = Process::timeout(15)->run($command);
 
-        if (! $result->successful()) {
-            return;
-        }
+        if ($result->successful()) {
+            foreach (preg_split('/\r?\n/', trim($result->output())) as $line) {
+                if (! str_contains($line, '::')) {
+                    continue;
+                }
 
-        foreach (preg_split('/\r?\n/', trim($result->output())) as $line) {
-            if (! str_contains($line, '::')) {
-                continue;
-            }
+                [$rawName, $json] = explode('::', $line, 2);
+                $name = ltrim($rawName, '/');
 
-            [$rawName, $json] = explode('::', $line, 2);
-            $name = ltrim($rawName, '/');
-            $port = $this->firstExposedPort(json_decode($json, true) ?? []);
+                if (! isset($needsPortLookup[$name])) {
+                    continue;
+                }
 
-            if ($port && isset($needsPortLookup[$name])) {
+                $port = $this->firstExposedPort(json_decode($json, true) ?? []);
+                $resolved[$name] = true;
                 $results[] = [
                     'name' => $name,
                     'image' => $needsPortLookup[$name],
-                    'url' => 'http://'.$machine->host.':'.$port,
+                    'url' => $port ? 'http://'.$machine->host.':'.$port : 'http://'.$machine->host,
                 ];
             }
+        }
+
+        foreach ($needsPortLookup as $name => $image) {
+            if (isset($resolved[$name])) {
+                continue;
+            }
+
+            $results[] = ['name' => $name, 'image' => $image, 'url' => 'http://'.$machine->host];
         }
     }
 

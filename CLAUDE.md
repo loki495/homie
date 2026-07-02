@@ -70,13 +70,29 @@ ESPHome were both missing from a host with 11 running containers). Both
 stragglers — `docker inspect` (SSH) or `GET /containers/{id}/json` (API) — and read the
 first port out of `Config.ExposedPorts` (the image's declared `EXPOSE`, present even
 under host networking since it's build-time metadata, not a runtime port mapping).
-This only recovers containers whose image actually declares `EXPOSE` — some (Home
-Assistant, notably) declare none, so they're a genuine dead end short of hardcoding a
-lab-specific default port, which the project's distributability rule forbids. Bridge/
-default-network containers with no port and no label are still correctly excluded — the
-host-network check (`Networks === 'host'` over SSH, `HostConfig.NetworkMode === 'host'`
-via the API) is what gates the fallback, so we don't invent unreachable URLs for
-containers that genuinely have no path to the host.
+This only recovers a *port* for containers whose image actually declares `EXPOSE` —
+some (Home Assistant, notably) declare none. Rather than drop those silently, they're
+still surfaced with a bare `http://{host}` URL (no port) — reachable, we just don't know
+at which port, so it's left for the user to fill in when they add the card. Hardcoding a
+per-image default port was considered and rejected: it's exactly the kind of
+lab-specific special-casing the project's distributability rule forbids (see below), and
+there's no reliable app-agnostic source for it. Bridge/default-network containers with
+no port and no label are still correctly excluded outright (not surfaced with a bare
+URL) — the host-network check (`Networks === 'host'` over SSH,
+`HostConfig.NetworkMode === 'host'` via the API) is what gates the fallback, so we don't
+invent URLs for containers that genuinely have no path to the host at all.
+
+## API cards are links, but the wrapping lives outside the widget
+
+`card.blade.php` wraps `<livewire:card-api-widget>` in an `<a href="{{ $card->url }}">`
+itself, rather than having the widget component decide whether to render a link. This is
+deliberate: `$editing` (Arrange mode) needs to gate the link exactly like it already does
+for Link-type cards — no `<a>` while arranging, so clicking a card doesn't navigate away
+mid-drag. If that logic lived inside `⚡card-api-widget.blade.php` instead, it'd hit the
+same lazy-load-island staleness problem as the entry above (`$editing` passed as a prop
+would only reflect its value at first mount, not later toggles of Arrange mode). Doing
+the wrap in `card.blade.php` sidesteps that entirely — it's a plain Blade partial that
+always re-renders fresh with Dashboard, no separate component lifecycle involved.
 
 ## Output/API widgets don't reactively see Card edits
 

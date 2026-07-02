@@ -1,8 +1,6 @@
 <?php
 
-use App\Enums\ApiProvider;
 use App\Models\Card;
-use Illuminate\Support\Facades\Http;
 use Livewire\Attributes\On;
 use Livewire\Component;
 
@@ -13,6 +11,9 @@ new class extends Component
     public ?string $status = null;
 
     public ?string $summary = null;
+
+    /** @var list<array{label: string, value: string}> */
+    public array $stats = [];
 
     #[On('dashboard-updated')]
     public function refreshCard(): void
@@ -28,38 +29,25 @@ new class extends Component
             return;
         }
 
-        if ($api->provider !== ApiProvider::Generic) {
+        $fetcher = $api->provider->fetcher();
+
+        if (! $fetcher) {
             $this->status = 'unsupported';
             $this->summary = $api->provider->label().' integration not implemented yet.';
 
             return;
         }
 
-        try {
-            $response = Http::timeout(5)
-                ->when(
-                    $api->auth_type === 'basic' && $api->username,
-                    fn ($http) => $http->withBasicAuth($api->username, $api->password ?? '')
-                )
-                ->when(
-                    $api->auth_type !== 'basic' && $api->api_key,
-                    fn ($http) => $http->withHeader('X-Api-Key', $api->api_key)
-                )
-                ->get($api->base_url);
+        $result = $fetcher->fetch($api);
 
-            $this->status = $response->successful() ? 'ok' : 'error';
-            $this->summary = $response->successful()
-                ? 'HTTP '.$response->status()
-                : 'HTTP '.$response->status().' — request failed';
+        $this->status = $result['status'];
+        $this->summary = $result['summary'];
+        $this->stats = $result['stats'];
 
-            $api->update([
-                'cached_data' => $response->successful() ? $response->json() : null,
-                'last_fetched_at' => now(),
-            ]);
-        } catch (Throwable) {
-            $this->status = 'error';
-            $this->summary = 'Could not reach '.$api->base_url;
-        }
+        $api->update([
+            'cached_data' => $result['status'] === 'ok' ? $result['raw'] : null,
+            'last_fetched_at' => now(),
+        ]);
     }
 
     public function placeholder(): string
@@ -90,5 +78,15 @@ new class extends Component
             'bg-slate-300' => $status === null,
         ])></span>
     </div>
-    <p class="mt-1 text-xs text-slate-400 dark:text-slate-500">{{ $summary }}</p>
+    @if (count($stats))
+        <div class="mt-2 flex flex-wrap gap-1.5">
+            @foreach ($stats as $stat)
+                <span class="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-500 dark:bg-slate-700 dark:text-slate-400">
+                    {{ $stat['label'] }}: <span class="font-semibold text-slate-600 dark:text-slate-300">{{ $stat['value'] }}</span>
+                </span>
+            @endforeach
+        </div>
+    @else
+        <p class="mt-1 text-xs text-slate-400 dark:text-slate-500">{{ $summary }}</p>
+    @endif
 </div>

@@ -4,6 +4,12 @@ declare(strict_types=1);
 
 namespace App\Enums;
 
+use App\Support\ApiProviders\GenericFetcher;
+use App\Support\ApiProviders\NzbgetFetcher;
+use App\Support\ApiProviders\ProviderFetcher;
+use App\Support\ApiProviders\RadarrFetcher;
+use App\Support\ApiProviders\SonarrFetcher;
+
 enum ApiProvider: string
 {
     case Generic = 'generic';
@@ -20,6 +26,17 @@ enum ApiProvider: string
             self::Radarr => 'Radarr',
             self::Prowlarr => 'Prowlarr',
             self::Nzbget => 'NZBGet',
+        };
+    }
+
+    public function fetcher(): ?ProviderFetcher
+    {
+        return match ($this) {
+            self::Generic => new GenericFetcher,
+            self::Sonarr => new SonarrFetcher,
+            self::Radarr => new RadarrFetcher,
+            self::Nzbget => new NzbgetFetcher,
+            self::Prowlarr => null,
         };
     }
 }

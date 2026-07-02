@@ -30,7 +30,10 @@ connections, card order, and groups — is user-configured data, not code.
 - Manual custom links for anything discovery doesn't cover
 - Editable "output" cards: user-defined shell commands (local or remote, e.g. via SSH),
   run non-blockingly on each page load, rendering raw output (disk space, load, etc.)
-- API-connected cards for services with an API (arr stack, nzbget, and similar)
+- API-connected cards for services with an API — Sonarr and Radarr show series/movies,
+  missing, and queue counts; NZBGet shows download speed, status, and remaining size.
+  API key or username/password auth, whichever the service needs. Other providers fall
+  back to a plain reachability check until they get their own integration
 - Drag-and-drop card reordering
 - Expandable/collapsible groups ("folders") of cards
 

@@ -135,6 +135,8 @@ new class extends Component
 
             foreach ($response->json() ?? [] as $container) {
                 $traefikHost = $this->extractTraefikHost($container['Labels'] ?? []);
+                $name = ltrim($container['Names'][0] ?? $container['Id'], '/');
+                $image = $container['Image'] ?? '';
 
                 $publicPort = collect($container['Ports'] ?? [])
                     ->pluck('PublicPort')
@@ -142,15 +144,28 @@ new class extends Component
                     ->unique()
                     ->first();
 
-                if (! $traefikHost && ! $publicPort) {
+                if ($traefikHost) {
+                    $results[] = ['name' => $name, 'image' => $image, 'url' => 'http://'.$traefikHost];
+
                     continue;
                 }
 
-                $results[] = [
-                    'name' => ltrim($container['Names'][0] ?? $container['Id'], '/'),
-                    'image' => $container['Image'] ?? '',
-                    'url' => $traefikHost ? 'http://'.$traefikHost : 'http://'.$host.':'.$publicPort,
-                ];
+                if ($publicPort) {
+                    $results[] = ['name' => $name, 'image' => $image, 'url' => 'http://'.$host.':'.$publicPort];
+
+                    continue;
+                }
+
+                // Host-network containers never appear in `Ports` (there's no mapping
+                // to publish — the container's ports are the host's ports directly), so
+                // fall back to whatever port the image itself declared via EXPOSE.
+                if (($container['HostConfig']['NetworkMode'] ?? null) === 'host') {
+                    $port = $this->hostNetworkPortViaDockerApi($base, $container['Id']);
+
+                    if ($port) {
+                        $results[] = ['name' => $name, 'image' => $image, 'url' => 'http://'.$host.':'.$port];
+                    }
+                }
             }
 
             $this->discovered = $results;
@@ -160,6 +175,21 @@ new class extends Component
             }
         } catch (Throwable) {
             $this->scanError = 'Could not reach the Docker API at '.$base.'.';
+        }
+    }
+
+    private function hostNetworkPortViaDockerApi(string $base, string $containerId): ?int
+    {
+        try {
+            $response = Http::timeout(5)->get($base.'/containers/'.$containerId.'/json');
+
+            if (! $response->successful()) {
+                return null;
+            }
+
+            return $this->firstExposedPort($response->json('Config.ExposedPorts') ?? []);
+        } catch (Throwable) {
+            return null;
         }
     }
 
@@ -189,6 +219,9 @@ new class extends Component
 
             $results = [];
 
+            /** @var array<string, string> $needsPortLookup Container name => image, for host-network containers with no published port. */
+            $needsPortLookup = [];
+
             foreach (preg_split('/\r?\n/', trim($result->output())) as $line) {
                 if ($line === '') {
                     continue;
@@ -202,16 +235,31 @@ new class extends Component
 
                 $traefikHost = $this->extractTraefikHost($container['Labels'] ?? '');
                 $port = $this->parseDockerCliPort($container['Ports'] ?? '');
+                $name = $container['Names'] ?? 'unknown';
+                $image = $container['Image'] ?? '';
 
-                if (! $traefikHost && ! $port) {
+                if ($traefikHost) {
+                    $results[] = ['name' => $name, 'image' => $image, 'url' => 'http://'.$traefikHost];
+
                     continue;
                 }
 
-                $results[] = [
-                    'name' => $container['Names'] ?? 'unknown',
-                    'image' => $container['Image'] ?? '',
-                    'url' => $traefikHost ? 'http://'.$traefikHost : 'http://'.$machine->host.':'.$port,
-                ];
+                if ($port) {
+                    $results[] = ['name' => $name, 'image' => $image, 'url' => 'http://'.$machine->host.':'.$port];
+
+                    continue;
+                }
+
+                // Host-network containers never appear with a port in `docker ps`
+                // (there's no mapping to publish), so fall back to whatever port the
+                // image itself declared via EXPOSE, via a follow-up `docker inspect`.
+                if (($container['Networks'] ?? '') === 'host') {
+                    $needsPortLookup[$name] = $image;
+                }
+            }
+
+            if ($needsPortLookup !== []) {
+                $this->resolveHostNetworkPortsViaSsh($machine, $identityFile, $needsPortLookup, $results);
             }
 
             $this->discovered = $results;
@@ -224,6 +272,58 @@ new class extends Component
                 unlink($identityFile);
             }
         }
+    }
+
+    /**
+     * @param  array<string, string>  $needsPortLookup  Container name => image.
+     * @param  list<array{name: string, image: string, url: string}>  $results  Appended to by reference.
+     */
+    private function resolveHostNetworkPortsViaSsh(Machine $machine, ?string $identityFile, array $needsPortLookup, array &$results): void
+    {
+        $inspectTargets = implode(' ', array_map('escapeshellarg', array_keys($needsPortLookup)));
+        $command = $this->sshCommand(
+            $machine,
+            $identityFile,
+            "docker inspect {$inspectTargets} --format '{{.Name}}::{{json .Config.ExposedPorts}}'"
+        );
+
+        $result = Process::timeout(15)->run($command);
+
+        if (! $result->successful()) {
+            return;
+        }
+
+        foreach (preg_split('/\r?\n/', trim($result->output())) as $line) {
+            if (! str_contains($line, '::')) {
+                continue;
+            }
+
+            [$rawName, $json] = explode('::', $line, 2);
+            $name = ltrim($rawName, '/');
+            $port = $this->firstExposedPort(json_decode($json, true) ?? []);
+
+            if ($port && isset($needsPortLookup[$name])) {
+                $results[] = [
+                    'name' => $name,
+                    'image' => $needsPortLookup[$name],
+                    'url' => 'http://'.$machine->host.':'.$port,
+                ];
+            }
+        }
+    }
+
+    /**
+     * @param  array<string, mixed>  $exposedPorts  Docker's `Config.ExposedPorts` shape: {"1234/tcp": {}}.
+     */
+    private function firstExposedPort(array $exposedPorts): ?int
+    {
+        $firstKey = array_key_first($exposedPorts);
+
+        if ($firstKey === null) {
+            return null;
+        }
+
+        return (int) strtok((string) $firstKey, '/');
     }
 
     private function sshCommand(Machine $machine, ?string $identityFile, string $remoteCommand): string

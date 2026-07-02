@@ -26,7 +26,9 @@ connections, card order, and groups — is user-configured data, not code.
 - Docker service discovery: save a scan target (name + host) in Settings, run a manual
   scan against its Docker Engine API (or `docker ps` over SSH), and turn discovered
   containers into cards. Prefers a container's Traefik `Host()` label for the URL when
-  present, so services with no host-published port are still discovered correctly
+  present, so services with no host-published port are still discovered correctly.
+  Falls back to the image's declared `EXPOSE` port for `--network host` containers,
+  which never show a port mapping otherwise
 - Manual custom links for anything discovery doesn't cover
 - Editable "output" cards: user-defined shell commands (local or remote, e.g. via SSH),
   run non-blockingly on each page load, rendering raw output (disk space, load, etc.)

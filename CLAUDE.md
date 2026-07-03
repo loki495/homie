@@ -39,15 +39,14 @@ encrypted at rest the same way `api_key` already was.
 
 ## Provider-specific API stats
 
-`ApiProvider::fetcher()` maps each enum case to an `App\Support\ApiProviders\*Fetcher`
-(implementing `ProviderFetcher`), or `null` for providers with no integration yet
-(currently Prowlarr). Each fetcher does its own HTTP calls via the shared
-`ApiHttpClient::for($api)` helper (applies the card's `auth_type`) and returns
-`{status, summary, stats[], raw}` — `stats` is a small list of label/value pairs
+`ApiProvider::fetcher()` maps every enum case to an `App\Support\ApiProviders\*Fetcher`
+(implementing `ProviderFetcher`) — every provider in the enum has one, non-nullable, by
+design (see "Adding a new provider" below). Each fetcher does its own HTTP calls and
+returns `{status, summary, stats[], raw}` — `stats` is a small list of label/value pairs
 rendered as chips on the card-api-widget instead of the generic "HTTP 200" line.
 Endpoint shapes were verified against the gethomepage/homepage widget source (a mature
-OSS project with working Sonarr/Radarr/NZBGet integrations) plus a live Sonarr/Radarr
-call against Andres's own instances — not guessed. Notable per-provider quirks:
+OSS project with working integrations for all of these) plus live calls against
+Andres's own instances — not guessed. Notable per-provider quirks:
 - Sonarr: `/api/v3/series` (count), `/api/v3/queue` and `/api/v3/wanted/missing` both
   paginated with a `totalRecords` field — request `pageSize=1` to avoid pulling the
   full list just for the count.
@@ -56,8 +55,22 @@ call against Andres's own instances — not guessed. Notable per-provider quirks
 - NZBGet doesn't use an API key — it's HTTP Basic Auth (`ControlUsername`/
   `ControlPassword`), a JSON-RPC POST to `/jsonrpc` with `{"method": "status"}`. This is
   exactly what `auth_type = 'basic'` was built for.
+- Prowlarr: same Servarr framework as Sonarr/Radarr, `X-Api-Key` header via
+  `ApiHttpClient`. `/api/v1/indexer` (list, filter `enable === true` for the enabled
+  count) and `/api/v1/indexerstats` (sum `numberOfGrabs`/`numberOfFailed*` across its
+  `indexers` array) — no single endpoint gives an aggregate, so it fetches both.
+- Bazarr does **not** follow the arr-stack header convention — it's `?apikey=` as a
+  query string only (confirmed: an unauthenticated request to `/api/movies/wanted`
+  returns a 401, and gethomepage/homepage's working integration only ever sends the key
+  in the query string). `BazarrFetcher` calls `Http::get()` directly instead of going
+  through `ApiHttpClient`, since that helper's basic-auth/header logic doesn't apply
+  here. Missing-subtitle counts come from `/api/movies/wanted` and
+  `/api/episodes/wanted`, both `{"total": N, ...}`.
+
 Adding a new provider: add the enum case, a Fetcher implementing `ProviderFetcher`, and
-one `match` arm in `ApiProvider::fetcher()` — the widget needs no changes.
+one `match` arm in `ApiProvider::fetcher()`, all in the same change — the widget needs
+no changes. Every case must resolve to a real fetcher (the return type is
+non-nullable); don't add an enum case before its fetcher exists.
 
 ## Discovery: host-network containers need an inspect fallback
 

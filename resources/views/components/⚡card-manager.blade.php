@@ -302,9 +302,16 @@ new class extends Component
         </div>
     </form>
 
-    <ul class="space-y-2">
+    <div x-data="{ filter: '' }" class="space-y-2">
+        <flux:input x-model="filter" placeholder="Filter cards..." />
+
+        <ul class="space-y-2">
         @forelse ($this->cards() as $card)
-            <li class="flex items-center justify-between gap-3 rounded-xl border border-slate-200 p-3.5 dark:border-slate-700">
+            <li
+                x-show="!filter || $el.dataset.search.includes(filter.toLowerCase())"
+                data-search="{{ strtolower($card->name.' '.$card->type->value.' '.($card->group?->name ?? '')) }}"
+                class="flex items-center justify-between gap-3 rounded-xl border border-slate-200 p-3.5 dark:border-slate-700"
+            >
                 <div class="flex min-w-0 items-center gap-2.5">
                     @if ($card->icon)
                         <img src="{{ $card->icon }}" alt="" class="h-8 w-8 shrink-0 rounded-md object-contain">
@@ -338,5 +345,6 @@ new class extends Component
         @empty
             <li class="text-sm text-slate-400 dark:text-slate-500">No cards yet.</li>
         @endforelse
-    </ul>
+        </ul>
+    </div>
 </div>

@@ -17,6 +17,10 @@ Alpine — no Flux equivalent was worth the migration risk for either. Dark mode
 on the project's own `Alpine.store('theme')` + inline FOUC-prevention script; Flux's
 `@fluxAppearance`/`@fluxScripts` directives are included for the components' own
 needs but the toggle button itself is not Flux's.
+- The Cards sidebar list's filter input is plain Alpine (`x-model` + `x-show` per `<li>`
+  matching against a `data-search` attribute) — no Livewire round-trip. This is the
+  pattern for any future client-side-only filtering: cheaper than a Livewire property
+  for something that never needs to touch the server.
 
 ## Card icons
 

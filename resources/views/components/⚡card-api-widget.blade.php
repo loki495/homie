@@ -29,16 +29,7 @@ new class extends Component
             return;
         }
 
-        $fetcher = $api->provider->fetcher();
-
-        if (! $fetcher) {
-            $this->status = 'unsupported';
-            $this->summary = $api->provider->label().' integration not implemented yet.';
-
-            return;
-        }
-
-        $result = $fetcher->fetch($api);
+        $result = $api->provider->fetcher()->fetch($api);
 
         $this->status = $result['status'];
         $this->summary = $result['summary'];
@@ -74,7 +65,6 @@ new class extends Component
             'h-2 w-2 rounded-full',
             'bg-emerald-500' => $status === 'ok',
             'bg-rose-500' => $status === 'error',
-            'bg-amber-400' => $status === 'unsupported',
             'bg-slate-300' => $status === null,
         ])></span>
     </div>

@@ -38,10 +38,11 @@ connections, card order, and groups — is user-configured data, not code.
   use (e.g. `-i /var/www/html/storage/ssh/media`); commands referencing a machine with
   no saved key will fail with a permission-denied error
 - API-connected cards for services with an API — Sonarr and Radarr show series/movies,
-  missing, and queue counts; NZBGet shows download speed, status, and remaining size.
-  API key or username/password auth, whichever the service needs. Clicking the card
-  opens the service, same as a link card. Other providers fall
-  back to a plain reachability check until they get their own integration
+  missing, and queue counts; Prowlarr shows enabled indexers, grabs, and failures;
+  Bazarr shows missing subtitle counts; NZBGet shows download speed, status, and
+  remaining size. API key or username/password auth, whichever the service needs.
+  Clicking the card opens the service, same as a link card. A generic fallback covers
+  any other API with a plain reachability check
 - Drag-and-drop card reordering
 - Expandable/collapsible groups ("folders") of cards
 

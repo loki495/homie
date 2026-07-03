@@ -77,21 +77,6 @@ it('picks up card name and icon changes without re-fetching the api', function (
     Http::assertSentCount(1);
 });
 
-it('shows a not-implemented message for unsupported providers without making a request', function () {
-    Http::fake();
-
-    $card = Card::factory()->create(['type' => CardType::Api]);
-    CardApi::factory()->create([
-        'card_id' => $card->id,
-        'provider' => ApiProvider::Prowlarr,
-    ]);
-
-    Livewire::test('card-api-widget', ['card' => $card])
-        ->assertSee('Prowlarr integration not implemented yet.');
-
-    Http::assertNothingSent();
-});
-
 it('shows series, missing, and queue counts for a sonarr card', function () {
     Http::fake([
         '*/api/v3/series' => Http::response([
@@ -145,6 +130,63 @@ it('shows movie, missing, and queue counts for a radarr card', function () {
         ->assertSee('1')
         ->assertSee('Queue')
         ->assertSee('2');
+});
+
+it('shows enabled indexer count, grabs, and failures for a prowlarr card', function () {
+    Http::fake([
+        '*/api/v1/indexer' => Http::response([
+            ['id' => 1, 'enable' => true],
+            ['id' => 2, 'enable' => true],
+            ['id' => 3, 'enable' => false],
+        ], 200),
+        '*/api/v1/indexerstats' => Http::response([
+            'indexers' => [
+                ['numberOfGrabs' => 40, 'numberOfFailedQueries' => 1, 'numberOfFailedGrabs' => 0],
+                ['numberOfGrabs' => 5, 'numberOfFailedQueries' => 0, 'numberOfFailedGrabs' => 2],
+            ],
+        ], 200),
+    ]);
+
+    $card = Card::factory()->create(['type' => CardType::Api]);
+    CardApi::factory()->create([
+        'card_id' => $card->id,
+        'provider' => ApiProvider::Prowlarr,
+        'base_url' => 'http://prowlarr.lan',
+        'api_key' => 'secret',
+    ]);
+
+    Livewire::test('card-api-widget', ['card' => $card])
+        ->assertSee('Indexers')
+        ->assertSee('2/3')
+        ->assertSee('Grabs')
+        ->assertSee('45')
+        ->assertSee('Failures')
+        ->assertSee('3');
+
+    Http::assertSent(fn ($request) => $request->hasHeader('X-Api-Key', 'secret'));
+});
+
+it('shows missing subtitle counts for a bazarr card authenticated via query string', function () {
+    Http::fake([
+        '*/api/movies/wanted*' => Http::response(['total' => 5], 200),
+        '*/api/episodes/wanted*' => Http::response(['total' => 12], 200),
+    ]);
+
+    $card = Card::factory()->create(['type' => CardType::Api]);
+    CardApi::factory()->create([
+        'card_id' => $card->id,
+        'provider' => ApiProvider::Bazarr,
+        'base_url' => 'http://bazarr.lan',
+        'api_key' => 'secret',
+    ]);
+
+    Livewire::test('card-api-widget', ['card' => $card])
+        ->assertSee('Movies')
+        ->assertSee('5')
+        ->assertSee('Episodes')
+        ->assertSee('12');
+
+    Http::assertSent(fn ($request) => str_contains((string) $request->url(), 'apikey=secret'));
 });
 
 it('shows download speed and status for an nzbget card authenticated with basic auth', function () {

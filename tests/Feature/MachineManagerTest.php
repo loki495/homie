@@ -339,6 +339,31 @@ it('still surfaces a host-network container even if the docker inspect lookup it
         ->and($component->get('discovered')[0]['url'])->toBe('http://192.168.1.6');
 });
 
+it('still surfaces a host-network container with a bare host url if the inspect lookup times out, over ssh', function () {
+    $machine = Machine::factory()->ssh()->create(['host' => '192.168.1.6']);
+
+    $psLine = json_encode([
+        'Names' => 'homeassistant',
+        'Image' => 'ghcr.io/home-assistant/home-assistant',
+        'Ports' => '',
+        'Networks' => 'host',
+    ]);
+
+    Process::fake(function ($process) use ($psLine) {
+        if (str_contains((string) $process->command, 'docker ps')) {
+            return Process::result(output: $psLine, exitCode: 0);
+        }
+
+        throw new RuntimeException('The process exceeded the timeout of 15 seconds.');
+    });
+
+    $component = Livewire::test('machine-manager')->call('discover', $machine->id);
+
+    expect($component->get('discovered'))->toHaveCount(1)
+        ->and($component->get('discovered')[0]['name'])->toBe('homeassistant')
+        ->and($component->get('discovered')[0]['url'])->toBe('http://192.168.1.6');
+});
+
 it('does not attempt a port lookup for bridge-network containers with no port or traefik label, over ssh', function () {
     $machine = Machine::factory()->ssh()->create(['host' => '192.168.1.6']);
 
@@ -369,6 +394,18 @@ it('surfaces the ssh error output when discovery fails', function () {
     $component = Livewire::test('machine-manager')->call('discover', $machine->id);
 
     expect($component->get('scanError'))->toContain('Permission denied (publickey).');
+});
+
+it('shows a friendly error instead of a 500 when the ssh command times out', function () {
+    $machine = Machine::factory()->ssh()->create();
+
+    Process::fake(function () {
+        throw new RuntimeException('The process exceeded the timeout of 15 seconds.');
+    });
+
+    $component = Livewire::test('machine-manager')->call('discover', $machine->id);
+
+    expect($component->get('scanError'))->toContain('SSH discovery failed');
 });
 
 it('stores the ssh private key encrypted at rest', function () {

@@ -271,6 +271,8 @@ new class extends Component
             if ($results === []) {
                 $this->scanError = 'No web-reachable containers were found (no Traefik label or published port).';
             }
+        } catch (Throwable $e) {
+            $this->scanError = 'SSH discovery failed: '.$e->getMessage();
         } finally {
             if ($identityFile && file_exists($identityFile)) {
                 unlink($identityFile);
@@ -297,9 +299,13 @@ new class extends Component
             "docker inspect {$inspectTargets} --format '{{.Name}}::{{json .Config.ExposedPorts}}'"
         );
 
-        $result = Process::timeout(15)->run($command);
+        try {
+            $result = Process::timeout(15)->run($command);
+        } catch (Throwable) {
+            $result = null;
+        }
 
-        if ($result->successful()) {
+        if ($result?->successful()) {
             foreach (preg_split('/\r?\n/', trim($result->output())) as $line) {
                 if (! str_contains($line, '::')) {
                     continue;

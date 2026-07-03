@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\Card;
+use Illuminate\Process\Exceptions\ProcessTimedOutException;
 use Illuminate\Support\Facades\Process;
 use Livewire\Attributes\On;
 use Livewire\Component;
@@ -27,12 +28,20 @@ new class extends Component
             return;
         }
 
-        $result = Process::timeout(10)->run($cardOutput->command);
+        try {
+            $result = Process::timeout(10)->run($cardOutput->command);
 
-        $output = trim($result->output()) !== '' ? $result->output() : $result->errorOutput();
+            $output = trim($result->output()) !== '' ? $result->output() : $result->errorOutput();
 
-        $this->output = trim($output);
-        $this->exitCode = $result->exitCode();
+            $this->output = trim($output);
+            $this->exitCode = $result->exitCode();
+        } catch (ProcessTimedOutException) {
+            $this->output = 'Command timed out after 10s.';
+            $this->exitCode = -1;
+        } catch (Throwable $e) {
+            $this->output = 'Command failed: '.$e->getMessage();
+            $this->exitCode = -1;
+        }
 
         $cardOutput->update([
             'last_output' => $this->output,

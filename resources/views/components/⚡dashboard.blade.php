@@ -91,7 +91,7 @@ new class extends Component
 ?>
 
 <div class="min-h-screen bg-slate-100 pb-10 dark:bg-slate-900">
-    <header class="flex items-center justify-between border-b border-slate-200 bg-white px-4 py-4 sm:px-6 dark:border-slate-800 dark:bg-slate-800">
+    <header class="sticky top-0 z-20 flex items-center justify-between border-b border-slate-200 bg-white px-4 py-4 sm:px-6 dark:border-slate-800 dark:bg-slate-800">
         <h1 class="text-lg font-semibold text-slate-800 dark:text-slate-100">Homie</h1>
         <div class="flex items-center gap-2">
             <button

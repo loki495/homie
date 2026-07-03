@@ -37,6 +37,22 @@ it('shows the error output when the command fails', function () {
         ->assertSee('command not found');
 });
 
+it('shows a friendly message instead of a 500 error when the command times out or fails to run', function () {
+    Process::fake(function () {
+        throw new RuntimeException('The process exceeded the timeout of 10 seconds.');
+    });
+
+    $card = Card::factory()->create(['type' => CardType::Output]);
+    $cardOutput = CardOutput::factory()->create(['card_id' => $card->id, 'command' => 'sleep 20']);
+
+    Livewire::test('card-output-widget', ['card' => $card])
+        ->assertSee('Command failed');
+
+    expect($cardOutput->fresh())
+        ->last_exit_code->toBe(-1)
+        ->last_run_at->not->toBeNull();
+});
+
 it('picks up card name and icon changes without re-running the command', function () {
     Process::fake([
         '*' => Process::result(output: "mocked disk output\n", exitCode: 0),

@@ -124,6 +124,21 @@ giving both widgets their own `#[On('dashboard-updated')]` listener that does
 `$this->card = $this->card->fresh();` — cheap, and deliberately does *not* re-run the
 shell command / API fetch on every dashboard change.
 
+## Output cards and SSH discovery must never let Process exceptions escape
+
+`⚡card-output-widget.blade.php`'s `mount()` runs a user-supplied shell command
+(`Process::timeout(10)->run(...)`) — for remote/SSH commands this can genuinely time
+out or fail to spawn, and an uncaught `ProcessTimedOutException` (or any other
+`Throwable`) crashes the whole Livewire request with a 500 and a jarring error dialog,
+even though the failure is expected/routine (a flaky SSH connection, not a bug). Wrap
+every direct `Process::run()` call in try/catch and turn a timeout into a normal
+"Command timed out after 10s." card output instead of letting it propagate. The same
+applies to `⚡machine-manager.blade.php`'s SSH discovery (`discoverViaSsh` and
+`resolveHostNetworkPortsViaSsh`) — both now catch `Throwable` around their
+`Process::run()` calls and set `$scanError`/fall back gracefully rather than crashing.
+(`ApiHttpClient`-based API fetchers already caught `Throwable` around their HTTP calls
+from the start, so they were never affected by this.)
+
 ## Discovery: don't gate on published ports alone
 
 Both `discoverViaDocker` and `discoverViaSsh` in `⚡machine-manager.blade.php` check

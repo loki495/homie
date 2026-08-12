@@ -139,6 +139,26 @@ applies to `⚡machine-manager.blade.php`'s SSH discovery (`discoverViaSsh` and
 (`ApiHttpClient`-based API fetchers already caught `Throwable` around their HTTP calls
 from the start, so they were never affected by this.)
 
+## Output cards can auto-refresh via wire:poll, with an overlap guard
+
+`card_outputs.refresh_interval_seconds` (nullable) lets an output-type card auto-refresh
+— the card-manager form takes an amount + seconds/minutes unit, normalized to seconds on
+save, and round-tripped back into the same two fields when editing. `⚡card-output-
+widget.blade.php` renders `wire:poll.{seconds}s="refreshOutput"` on its wrapper `<div>`
+only when an interval is set. Livewire's poll directive is a plain `setInterval` with no
+built-in per-request dedup, so a command slower than its own poll interval (a flaky SSH
+hop, a laggy remote host) would otherwise stack up overlapping executions. `runCommand()`
+guards against this with a non-blocking `Cache::lock("card-output-running:{id}", 15)`: if
+a run is already holding the lock, the poll just redisplays the card's last known
+`last_output`/`last_exit_code` from the DB instead of re-running the command. The lock
+TTL (15s) is a few seconds past the command's own `Process::timeout(10)`, so a lock from
+a run that dies without releasing (e.g. the worker gets killed mid-request) self-expires
+instead of deadlocking the card forever. `dashboard-updated` continues to only refresh
+`$refreshIntervalSeconds` (read fresh off `card->output`) rather than re-running the
+command — editing the interval mid-session takes effect on the next poll without an
+extra command execution, consistent with how that listener already avoids re-running the
+command for name/icon edits (see above).
+
 ## Discovery: don't gate on published ports alone
 
 Both `discoverViaDocker` and `discoverViaSsh` in `⚡machine-manager.blade.php` check
@@ -166,7 +186,10 @@ the UI/database — not one pre-wired to Andres's home lab.
 
 ## Container / infra
 
-- App container: `homie-app` (PHP 8.5-apache). Vite container: `homie-vite`.
+- App container: `homie-app` (PHP 8.5-apache). Vite container: `homie-vite`. Both have
+  `restart: unless-stopped` and the vite service has a healthcheck (polls
+  `/@vite/client`) so a crashed dev server is visible in `docker ps`/restarted
+  automatically instead of silently leaving HMR dead.
 - Run PHP tooling via `docker exec -u www-data homie-app ...` — use `-u www-data`
   (not root) so files stay owned by UID 1000, matching the host user on the bind mount.
   Composer script wrappers (`composer pint`, `phpstan`, `rector`, `pest`) already do this.
@@ -195,6 +218,37 @@ Default PHPStan level 6, Pint `laravel` preset, Rector `UP_TO_PHP_84` + code qua
 code sets (dry-run only — never auto-apply without reviewing the diff). Pre-commit hook
 (symlinked from `~/.claude/hooks/laravel-pre-commit.sh`) runs Pint (auto-fix) → PHPStan
 (block) → Rector dry-run (block) → Pest (block) on staged PHP files.
+
+- The pre-commit hook's `docker exec` calls (Rector and Pest) run as the container's
+  *default* user, which is **root** — not `www-data` (confirmed via `docker exec
+  homie-app whoami`). Rector's `/tmp/rector_cached_files` cache ends up owned by root
+  as a result. Running `./vendor/bin/rector` manually with `-u www-data` (the
+  convention for Pint/PHPStan/Composer, to keep bind-mounted files owned by the host
+  UID) will then fail with "Permission denied" trying to clean that root-owned cache —
+  it's not a real Rector problem, just a user mismatch versus the hook. Run Rector
+  manually the same way the hook does, without `-u www-data` (or `-u root`), to match.
+
+## Reverse-proxy trust and LAN CSRF exemption
+
+`bootstrap/app.php` calls `$middleware->trustProxies(at: '*')` so `$request->ip()`
+resolves the real client IP from `X-Forwarded-For` instead of Traefik's own
+docker-network IP — Laravel's `'*'` mode only trusts the *immediate* calling IP (i.e.
+Traefik's own hop), not an arbitrary forwarded chain from further upstream.
+`App\Http\Middleware\VerifyCsrfToken` is swapped in for the default
+`PreventRequestForgery` in the `web` middleware group (via `replaceInGroup`) and skips
+CSRF token verification entirely when the resolved IP falls in a private or reserved
+range (`FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE`) — a deliberate LAN
+convenience so requests from the home network aren't fighting CSRF tokens. A request
+resolving to a public IP still goes through the normal `parent::tokensMatch()` check.
+Because Laravel's own CSRF middleware unconditionally no-ops during test runs
+(`PreventRequestForgery::runningUnitTests()`), this can't be exercised with a real HTTP
+round trip in tests — `tests/Unit/Http/Middleware/VerifyCsrfTokenTest.php` calls
+`tokensMatch()` directly via reflection instead. Trusting `'*'` combined with the LAN
+bypass means a spoofed `X-Forwarded-For` from anything that reaches this container
+directly (bypassing Traefik) and claims a private IP would waive CSRF — acceptable
+given Traefik is the only intended entry point in this home-lab deployment, but worth
+narrowing `trustProxies` to Traefik's actual container/network IP if this app is ever
+exposed differently.
 
 ## Git
 

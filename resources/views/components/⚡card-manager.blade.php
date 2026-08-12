@@ -23,6 +23,10 @@ new class extends Component
 
     public string $command = '';
 
+    public ?int $refreshAmount = null;
+
+    public string $refreshUnit = 'minutes';
+
     public string $provider = 'generic';
 
     public string $base_url = '';
@@ -86,7 +90,7 @@ new class extends Component
             'group_id' => 'nullable|exists:groups,id',
             ...match ($this->type) {
                 'link' => ['url' => 'required|url'],
-                'output' => ['command' => 'required|string'],
+                'output' => ['command' => 'required|string', 'refreshAmount' => 'nullable|integer|min:1'],
                 'api' => ['base_url' => 'required|url', 'provider' => 'required|string'],
                 default => [],
             },
@@ -118,7 +122,12 @@ new class extends Component
         $card->save();
 
         if ($this->type === 'output') {
-            $card->output()->updateOrCreate([], ['command' => $this->command]);
+            $card->output()->updateOrCreate([], [
+                'command' => $this->command,
+                'refresh_interval_seconds' => $this->refreshAmount
+                    ? $this->refreshAmount * ($this->refreshUnit === 'minutes' ? 60 : 1)
+                    : null,
+            ]);
         } else {
             $card->output()->delete();
         }
@@ -150,6 +159,19 @@ new class extends Component
         $this->group_id = $card->group_id;
         $this->url = $card->type === CardType::Link ? (string) $card->url : '';
         $this->command = $card->output?->command ?? '';
+
+        $refreshIntervalSeconds = $card->output?->refresh_interval_seconds;
+
+        if ($refreshIntervalSeconds && $refreshIntervalSeconds % 60 === 0) {
+            $this->refreshAmount = intdiv($refreshIntervalSeconds, 60);
+            $this->refreshUnit = 'minutes';
+        } elseif ($refreshIntervalSeconds) {
+            $this->refreshAmount = $refreshIntervalSeconds;
+            $this->refreshUnit = 'seconds';
+        } else {
+            $this->refreshAmount = null;
+            $this->refreshUnit = 'minutes';
+        }
         $this->provider = $card->api?->provider?->value ?? 'generic';
         $this->base_url = $card->api?->base_url ?? '';
         $this->auth_type = $card->api?->auth_type ?? 'api_key';
@@ -167,10 +189,11 @@ new class extends Component
 
     protected function resetForm(): void
     {
-        $this->reset(['editingId', 'name', 'group_id', 'url', 'command', 'base_url', 'api_key', 'username', 'password', 'icon', 'iconQuery', 'iconResults']);
+        $this->reset(['editingId', 'name', 'group_id', 'url', 'command', 'refreshAmount', 'base_url', 'api_key', 'username', 'password', 'icon', 'iconQuery', 'iconResults']);
         $this->type = 'link';
         $this->provider = 'generic';
         $this->auth_type = 'api_key';
+        $this->refreshUnit = 'minutes';
         $this->resetValidation();
     }
 
@@ -273,6 +296,14 @@ new class extends Component
             <flux:input wire:model="url" placeholder="https://example.lan" />
         @elseif ($type === 'output')
             <flux:textarea wire:model="command" rows="2" placeholder="df -h /" class="font-mono" />
+            <div class="flex items-center gap-2">
+                <flux:input wire:model="refreshAmount" type="number" min="1" placeholder="Off" class="w-24" />
+                <flux:select wire:model="refreshUnit" class="flex-1">
+                    <flux:select.option value="seconds">Seconds</flux:select.option>
+                    <flux:select.option value="minutes">Minutes</flux:select.option>
+                </flux:select>
+            </div>
+            <p class="text-xs text-slate-400 dark:text-slate-500">Auto-refresh interval (leave blank to only run on page load)</p>
         @elseif ($type === 'api')
             <flux:select wire:model="provider">
                 @foreach ($this->apiProviders() as $apiProvider)

@@ -22,6 +22,7 @@ class CardOutputFactory extends Factory
         return [
             'card_id' => Card::factory()->state(['type' => CardType::Output]),
             'command' => 'uptime',
+            'refresh_interval_seconds' => null,
             'last_output' => null,
             'last_exit_code' => null,
             'last_run_at' => null,

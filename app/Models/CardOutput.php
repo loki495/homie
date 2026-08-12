@@ -17,6 +17,7 @@ class CardOutput extends Model
     protected $fillable = [
         'card_id',
         'command',
+        'refresh_interval_seconds',
         'last_output',
         'last_exit_code',
         'last_run_at',
@@ -26,6 +27,7 @@ class CardOutput extends Model
     protected function casts(): array
     {
         return [
+            'refresh_interval_seconds' => 'integer',
             'last_exit_code' => 'integer',
             'last_run_at' => 'datetime',
         ];

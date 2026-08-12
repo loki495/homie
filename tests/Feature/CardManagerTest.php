@@ -48,6 +48,71 @@ it('creates an output card with its command', function () {
         ->and($card->output->command)->toBe('df -h');
 });
 
+it('creates an output card with an auto-refresh interval in minutes', function () {
+    Livewire::test('card-manager')
+        ->set('name', 'Disk')
+        ->set('type', 'output')
+        ->set('command', 'df -h')
+        ->set('refreshAmount', 5)
+        ->set('refreshUnit', 'minutes')
+        ->call('save');
+
+    $card = Card::where('name', 'Disk')->sole();
+
+    expect($card->output->refresh_interval_seconds)->toBe(300);
+});
+
+it('creates an output card with an auto-refresh interval in seconds', function () {
+    Livewire::test('card-manager')
+        ->set('name', 'Disk')
+        ->set('type', 'output')
+        ->set('command', 'df -h')
+        ->set('refreshAmount', 30)
+        ->set('refreshUnit', 'seconds')
+        ->call('save');
+
+    $card = Card::where('name', 'Disk')->sole();
+
+    expect($card->output->refresh_interval_seconds)->toBe(30);
+});
+
+it('leaves auto-refresh off for an output card when no interval is given', function () {
+    Livewire::test('card-manager')
+        ->set('name', 'Disk')
+        ->set('type', 'output')
+        ->set('command', 'df -h')
+        ->call('save');
+
+    $card = Card::where('name', 'Disk')->sole();
+
+    expect($card->output->refresh_interval_seconds)->toBeNull();
+});
+
+it('rejects a non-positive auto-refresh interval for an output card', function () {
+    Livewire::test('card-manager')
+        ->set('name', 'Disk')
+        ->set('type', 'output')
+        ->set('command', 'df -h')
+        ->set('refreshAmount', 0)
+        ->call('save')
+        ->assertHasErrors(['refreshAmount' => 'min']);
+
+    expect(Card::where('name', 'Disk')->exists())->toBeFalse();
+});
+
+it('restores the saved auto-refresh interval when editing an output card', function () {
+    $card = Card::factory()->create(['type' => CardType::Output]);
+    CardOutput::factory()->create([
+        'card_id' => $card->id,
+        'refresh_interval_seconds' => 120,
+    ]);
+
+    Livewire::test('card-manager')
+        ->call('edit', $card->id)
+        ->assertSet('refreshAmount', 2)
+        ->assertSet('refreshUnit', 'minutes');
+});
+
 it('creates an api card with its connection details', function () {
     Livewire::test('card-manager')
         ->set('name', 'Sonarr')

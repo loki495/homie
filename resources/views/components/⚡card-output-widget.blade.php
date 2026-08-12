@@ -2,6 +2,7 @@
 
 use App\Models\Card;
 use Illuminate\Process\Exceptions\ProcessTimedOutException;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Process;
 use Livewire\Attributes\On;
 use Livewire\Component;
@@ -14,13 +15,26 @@ new class extends Component
 
     public ?int $exitCode = null;
 
+    public ?int $refreshIntervalSeconds = null;
+
     #[On('dashboard-updated')]
     public function refreshCard(): void
     {
         $this->card = $this->card->fresh();
+        $this->refreshIntervalSeconds = $this->card->output?->refresh_interval_seconds;
     }
 
     public function mount(): void
+    {
+        $this->runCommand();
+    }
+
+    public function refreshOutput(): void
+    {
+        $this->runCommand();
+    }
+
+    private function runCommand(): void
     {
         $cardOutput = $this->card->output()->first();
 
@@ -28,26 +42,41 @@ new class extends Component
             return;
         }
 
-        try {
-            $result = Process::timeout(10)->run($cardOutput->command);
+        $this->refreshIntervalSeconds = $cardOutput->refresh_interval_seconds;
 
-            $output = trim($result->output()) !== '' ? $result->output() : $result->errorOutput();
+        $lock = Cache::lock("card-output-running:{$cardOutput->id}", 15);
 
-            $this->output = trim($output);
-            $this->exitCode = $result->exitCode();
-        } catch (ProcessTimedOutException) {
-            $this->output = 'Command timed out after 10s.';
-            $this->exitCode = -1;
-        } catch (Throwable $e) {
-            $this->output = 'Command failed: '.$e->getMessage();
-            $this->exitCode = -1;
+        if (! $lock->get()) {
+            $this->output = $cardOutput->last_output;
+            $this->exitCode = $cardOutput->last_exit_code;
+
+            return;
         }
 
-        $cardOutput->update([
-            'last_output' => $this->output,
-            'last_exit_code' => $this->exitCode,
-            'last_run_at' => now(),
-        ]);
+        try {
+            try {
+                $result = Process::timeout(10)->run($cardOutput->command);
+
+                $output = trim($result->output()) !== '' ? $result->output() : $result->errorOutput();
+
+                $this->output = trim($output);
+                $this->exitCode = $result->exitCode();
+            } catch (ProcessTimedOutException) {
+                $this->output = 'Command timed out after 10s.';
+                $this->exitCode = -1;
+            } catch (Throwable $e) {
+                $this->output = 'Command failed: '.$e->getMessage();
+                $this->exitCode = -1;
+            }
+
+            $cardOutput->update([
+                'last_output' => $this->output,
+                'last_exit_code' => $this->exitCode,
+                'last_run_at' => now(),
+            ]);
+        } finally {
+            $lock->release();
+        }
     }
 
     public function placeholder(): string
@@ -62,7 +91,10 @@ new class extends Component
 };
 ?>
 
-<div class="rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-800">
+<div
+    class="rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-800"
+    @if ($refreshIntervalSeconds) wire:poll.{{ $refreshIntervalSeconds }}s="refreshOutput" @endif
+>
     <div class="flex items-center justify-between">
         <div class="flex min-w-0 items-center gap-2.5">
             @if ($card->icon)

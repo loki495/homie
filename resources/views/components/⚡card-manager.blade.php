@@ -84,7 +84,7 @@ new class extends Component
     }
 
     /**
-     * @return array<string, string>
+     * @return array<string, mixed>
      */
     protected function rules(): array
     {
@@ -94,7 +94,19 @@ new class extends Component
             'group_id' => 'nullable|exists:groups,id',
             ...match ($this->type) {
                 'link' => ['url' => 'required|url'],
-                'output' => ['command' => 'required|string', 'refreshAmount' => 'nullable|integer|min:1'],
+                'output' => [
+                    'command' => 'required|string',
+                    'refreshAmount' => [
+                        'nullable',
+                        'integer',
+                        'min:1',
+                        function (string $attribute, mixed $value, Closure $fail): void {
+                            if ($value !== null && $this->refreshUnit === 'seconds' && $value < 5) {
+                                $fail('The refresh interval must be at least 5 seconds.');
+                            }
+                        },
+                    ],
+                ],
                 'api' => ['base_url' => 'required|url', 'provider' => 'required|string'],
                 default => [],
             },
@@ -317,13 +329,21 @@ new class extends Component
         @elseif ($type === 'output')
             <flux:textarea wire:model="command" rows="2" placeholder="df -h /" class="font-mono" />
             <div class="flex items-center gap-2">
-                <flux:input wire:model="refreshAmount" type="number" min="1" placeholder="Off" class="w-24" />
-                <flux:select wire:model="refreshUnit" class="flex-1">
+                <flux:input
+                    wire:model="refreshAmount"
+                    type="number"
+                    min="{{ $refreshUnit === 'seconds' ? 5 : 1 }}"
+                    placeholder="Off"
+                    class="w-24"
+                />
+                <flux:select wire:model.live="refreshUnit" class="flex-1">
                     <flux:select.option value="seconds">Seconds</flux:select.option>
                     <flux:select.option value="minutes">Minutes</flux:select.option>
                 </flux:select>
             </div>
-            <p class="text-xs text-slate-400 dark:text-slate-500">Auto-refresh interval (leave blank to only run on page load)</p>
+            <p class="text-xs text-slate-400 dark:text-slate-500">
+                Auto-refresh interval (leave blank to only run on page load, {{ $refreshUnit === 'seconds' ? '5s' : '1m' }} minimum)
+            </p>
         @elseif ($type === 'api')
             <flux:select wire:model="provider">
                 @foreach ($this->apiProviders() as $apiProvider)

@@ -100,6 +100,45 @@ it('rejects a non-positive auto-refresh interval for an output card', function (
     expect(Card::where('name', 'Disk')->exists())->toBeFalse();
 });
 
+it('rejects a sub-5-second auto-refresh interval for an output card', function () {
+    Livewire::test('card-manager')
+        ->set('name', 'Disk')
+        ->set('type', 'output')
+        ->set('command', 'df -h')
+        ->set('refreshAmount', 1)
+        ->set('refreshUnit', 'seconds')
+        ->call('save')
+        ->assertHasErrors(['refreshAmount']);
+
+    expect(Card::where('name', 'Disk')->exists())->toBeFalse();
+});
+
+it('allows a 5-second auto-refresh interval for an output card', function () {
+    Livewire::test('card-manager')
+        ->set('name', 'Disk')
+        ->set('type', 'output')
+        ->set('command', 'df -h')
+        ->set('refreshAmount', 5)
+        ->set('refreshUnit', 'seconds')
+        ->call('save')
+        ->assertHasNoErrors();
+
+    expect(Card::where('name', 'Disk')->sole()->output->refresh_interval_seconds)->toBe(5);
+});
+
+it('allows a 1-minute auto-refresh interval without hitting the seconds floor', function () {
+    Livewire::test('card-manager')
+        ->set('name', 'Disk')
+        ->set('type', 'output')
+        ->set('command', 'df -h')
+        ->set('refreshAmount', 1)
+        ->set('refreshUnit', 'minutes')
+        ->call('save')
+        ->assertHasNoErrors();
+
+    expect(Card::where('name', 'Disk')->sole()->output->refresh_interval_seconds)->toBe(60);
+});
+
 it('restores the saved auto-refresh interval when editing an output card', function () {
     $card = Card::factory()->create(['type' => CardType::Output]);
     CardOutput::factory()->create([

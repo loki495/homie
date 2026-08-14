@@ -69,6 +69,17 @@ it('returns an empty index gracefully when the cdn is unreachable', function () 
     expect($results)->toBe([]);
 });
 
+it('returns an empty index gracefully when the app-icon request throws', function () {
+    Http::fake([
+        'cdn.jsdelivr.net/*' => fn () => throw new ConnectionException('Could not connect'),
+        'data.jsdelivr.com/*' => Http::response(['files' => []], 200),
+    ]);
+
+    $results = app(DashboardIcons::class)->search('sonarr');
+
+    expect($results)->toBe([]);
+});
+
 /**
  * @param  list<string>  $names
  * @return array<string, mixed>

@@ -92,7 +92,11 @@ class DashboardIcons
     private function index(): array
     {
         return Cache::remember('dashboard-icons-index', now()->addDay(), function (): array {
-            $response = Http::timeout(5)->get(self::INDEX_URL);
+            try {
+                $response = Http::timeout(5)->get(self::INDEX_URL);
+            } catch (\Throwable) {
+                return [];
+            }
 
             if (! $response->successful()) {
                 return [];

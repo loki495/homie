@@ -6,6 +6,7 @@ use App\Enums\ApiProvider;
 use App\Enums\CardType;
 use App\Models\Card;
 use App\Models\CardApi;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Http;
 use Livewire\Livewire;
 
@@ -27,6 +28,44 @@ it('fetches and caches data for a generic api card', function () {
     expect($api->fresh())
         ->cached_data->toBe(['status' => 'up'])
         ->last_fetched_at->not->toBeNull();
+});
+
+it('shows an error status and summary when the api responds with a failure status', function () {
+    Http::fake([
+        'example.test/*' => Http::response(null, 503),
+    ]);
+
+    $card = Card::factory()->create(['type' => CardType::Api]);
+    $api = CardApi::factory()->create([
+        'card_id' => $card->id,
+        'provider' => ApiProvider::Generic,
+        'base_url' => 'https://example.test/api',
+    ]);
+
+    Livewire::test('card-api-widget', ['card' => $card])
+        ->assertSee('HTTP 503')
+        ->assertSeeHtml('bg-rose-500');
+
+    expect($api->fresh())
+        ->cached_data->toBeNull()
+        ->last_fetched_at->not->toBeNull();
+});
+
+it('shows a friendly error instead of a 500 when the api is unreachable', function () {
+    Http::fake([
+        'example.test/*' => fn () => throw new ConnectionException('Could not connect'),
+    ]);
+
+    $card = Card::factory()->create(['type' => CardType::Api]);
+    CardApi::factory()->create([
+        'card_id' => $card->id,
+        'provider' => ApiProvider::Generic,
+        'base_url' => 'https://example.test/api',
+    ]);
+
+    Livewire::test('card-api-widget', ['card' => $card])
+        ->assertSee('Could not reach https://example.test/api')
+        ->assertSeeHtml('bg-rose-500');
 });
 
 it('authenticates with basic auth when the api uses a username and password', function () {

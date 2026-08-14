@@ -25,7 +25,7 @@
             <div class="block rounded-lg border border-slate-200 bg-white p-4 opacity-75 dark:border-slate-700 dark:bg-slate-800">
                 <div class="flex items-center gap-2.5">
                     @if ($card->icon)
-                        <img src="{{ $card->icon }}" alt="" class="h-6 w-6 shrink-0 object-contain">
+                        <x-card-icon :src="$card->icon" class="h-6 w-6 shrink-0 object-contain" />
                     @endif
                     <h3 class="truncate text-sm font-semibold text-slate-700 dark:text-slate-200">{{ $card->name }}</h3>
                 </div>
@@ -40,7 +40,7 @@
             >
                 <div class="flex items-center gap-2.5">
                     @if ($card->icon)
-                        <img src="{{ $card->icon }}" alt="" class="h-6 w-6 shrink-0 object-contain">
+                        <x-card-icon :src="$card->icon" class="h-6 w-6 shrink-0 object-contain" />
                     @endif
                     <h3 class="truncate text-sm font-semibold text-slate-700 dark:text-slate-200">{{ $card->name }}</h3>
                 </div>

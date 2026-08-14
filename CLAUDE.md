@@ -24,14 +24,29 @@ needs but the toggle button itself is not Flux's.
 
 ## Card icons
 
-`app/Support/DashboardIcons.php` searches the free homarr-labs/dashboard-icons index
-(no API key) for icons matching common self-hosted app names, letting card creation
-suggest an icon for recognized services. Icons are hotlinked from jsDelivr's CDN —
-never downloaded or cached locally on this app's storage (a deliberate choice: keeps
-things simple, no storage/cleanup concern, matches how Homarr/Dashy do it). The
-`metadata.json` index itself is cached server-side for a day via `Cache::remember`.
-`Card.icon` just stores a plain URL — either a resolved CDN link or a manually pasted
-one, no distinction made at render time.
+`app/Support/DashboardIcons.php` searches two free, no-API-key icon indexes for card
+creation: homarr-labs/dashboard-icons for recognized self-hosted app logos (sonarr,
+radarr, plex, ...), and Heroicons' `24/outline` set (via jsDelivr's npm CDN) for
+generic icons (folder, router, link, ...) when a card isn't a specific branded
+service — app-logo matches are returned first, heroicons fill the rest up to the
+(generous, 40) limit. Both icons are hotlinked from jsDelivr, never downloaded or
+cached locally on this app's storage (a deliberate choice: keeps things simple, no
+storage/cleanup concern, matches how Homarr/Dashy do it). Both indexes are cached
+server-side for a day via `Cache::remember`. `Card.icon` just stores a plain URL —
+either a resolved CDN link or a manually pasted one, no distinction made at render
+time.
+
+Heroicons are monochrome (`stroke="currentColor"` in the SVG), which only resolves
+correctly when an SVG is inlined into the page — hotlinked via a plain `<img>` tag
+(every icon in this app is) it renders solid black regardless of theme, invisible
+against a dark card background. Every place a card icon renders goes through the
+shared `<x-card-icon :src="...">` component (`resources/views/components/card-
+icon.blade.php`), which applies a `dark:invert` filter when
+`DashboardIcons::isMonochrome($url)` matches the icon's URL against the heroicons CDN
+host — homarr's full-color app logos must never get that filter, so this is a URL
+host check, not a general "is this SVG" check. Any new place that renders `Card.icon`
+(or a raw search-result URL) must go through this component rather than a bare
+`<img>`, or a heroicon picked for that spot will silently disappear in dark mode.
 
 ## Card API auth
 

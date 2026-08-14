@@ -271,7 +271,7 @@ new class extends Component
         <div class="space-y-2">
             <div class="flex items-center gap-2">
                 @if ($icon)
-                    <img src="{{ $icon }}" alt="" class="h-9 w-9 shrink-0 rounded-md border border-slate-200 object-contain p-1 dark:border-slate-600">
+                    <x-card-icon :src="$icon" class="h-9 w-9 shrink-0 rounded-md border border-slate-200 object-contain p-1 dark:border-slate-600" />
                 @else
                     <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-dashed border-slate-300 dark:border-slate-600"></div>
                 @endif
@@ -280,16 +280,16 @@ new class extends Component
                     <flux:button icon="x-mark" variant="ghost" size="sm" wire:click="$set('icon', '')" aria-label="Clear icon" />
                 @endif
             </div>
-            <flux:input wire:model.live.debounce.400ms="iconQuery" placeholder="Search icons, e.g. sonarr" />
+            <flux:input wire:model.live.debounce.400ms="iconQuery" placeholder="Search icons, e.g. sonarr or router" />
             @if (count($iconResults))
-                <div class="grid grid-cols-4 gap-2 sm:grid-cols-6">
+                <div class="grid max-h-64 grid-cols-4 gap-2 overflow-y-auto sm:grid-cols-6">
                     @foreach ($iconResults as $result)
                         <button
                             type="button"
                             wire:click="selectIcon('{{ $result['url'] }}')"
                             class="flex flex-col items-center gap-1 rounded-md border border-slate-200 p-2 hover:border-slate-400 dark:border-slate-600 dark:hover:border-slate-400"
                         >
-                            <img src="{{ $result['url'] }}" alt="" class="h-6 w-6 object-contain">
+                            <x-card-icon :src="$result['url']" class="h-6 w-6 object-contain" />
                             <span class="w-full truncate text-center text-xs text-slate-500 dark:text-slate-400">{{ $result['name'] }}</span>
                         </button>
                     @endforeach
@@ -372,7 +372,7 @@ new class extends Component
             >
                 <div class="flex min-w-0 items-center gap-2.5">
                     @if ($card->icon)
-                        <img src="{{ $card->icon }}" alt="" class="h-8 w-8 shrink-0 rounded-md object-contain">
+                        <x-card-icon :src="$card->icon" class="h-8 w-8 shrink-0 rounded-md object-contain" />
                     @endif
                     <div class="min-w-0">
                         <p class="truncate text-sm text-slate-700 dark:text-slate-200">{{ $card->name }}</p>

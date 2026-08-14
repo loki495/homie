@@ -99,7 +99,7 @@ new class extends Component
     <div class="flex items-center justify-between">
         <div class="flex min-w-0 items-center gap-2.5">
             @if ($card->icon)
-                <img src="{{ $card->icon }}" alt="" class="h-5 w-5 shrink-0 object-contain">
+                <x-card-icon :src="$card->icon" class="h-5 w-5 shrink-0 object-contain" />
             @endif
             <h3 class="truncate text-sm font-semibold text-slate-700 dark:text-slate-200">{{ $card->name }}</h3>
         </div>

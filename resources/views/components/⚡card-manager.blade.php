@@ -35,9 +35,13 @@ new class extends Component
 
     public string $api_key = '';
 
+    public bool $hasApiKey = false;
+
     public string $username = '';
 
     public string $password = '';
+
+    public bool $hasPassword = false;
 
     public string $icon = '';
 
@@ -133,14 +137,28 @@ new class extends Component
         }
 
         if ($this->type === 'api') {
-            $card->api()->updateOrCreate([], [
+            $attributes = [
                 'provider' => ApiProvider::from($this->provider),
                 'base_url' => $this->base_url,
                 'auth_type' => $this->auth_type,
-                'api_key' => $this->auth_type === 'api_key' && $this->api_key !== '' ? $this->api_key : null,
                 'username' => $this->auth_type === 'basic' && $this->username !== '' ? $this->username : null,
-                'password' => $this->auth_type === 'basic' && $this->password !== '' ? $this->password : null,
-            ]);
+            ];
+
+            if ($this->auth_type !== 'api_key') {
+                $attributes['api_key'] = null;
+            } elseif ($this->api_key !== '') {
+                $attributes['api_key'] = $this->api_key;
+            }
+            // else: field left blank on an existing key — leave api_key untouched.
+
+            if ($this->auth_type !== 'basic') {
+                $attributes['password'] = null;
+            } elseif ($this->password !== '') {
+                $attributes['password'] = $this->password;
+            }
+            // else: field left blank on an existing password — leave password untouched.
+
+            $card->api()->updateOrCreate([], $attributes);
         } else {
             $card->api()->delete();
         }
@@ -175,9 +193,11 @@ new class extends Component
         $this->provider = $card->api?->provider?->value ?? 'generic';
         $this->base_url = $card->api?->base_url ?? '';
         $this->auth_type = $card->api?->auth_type ?? 'api_key';
-        $this->api_key = $card->api?->api_key ?? '';
+        $this->api_key = '';
+        $this->hasApiKey = $card->api?->api_key !== null;
         $this->username = $card->api?->username ?? '';
-        $this->password = $card->api?->password ?? '';
+        $this->password = '';
+        $this->hasPassword = $card->api?->password !== null;
         $this->icon = (string) $card->icon;
         $this->dispatch('scroll-sidebar-top');
     }
@@ -189,7 +209,7 @@ new class extends Component
 
     protected function resetForm(): void
     {
-        $this->reset(['editingId', 'name', 'group_id', 'url', 'command', 'refreshAmount', 'base_url', 'api_key', 'username', 'password', 'icon', 'iconQuery', 'iconResults']);
+        $this->reset(['editingId', 'name', 'group_id', 'url', 'command', 'refreshAmount', 'base_url', 'api_key', 'hasApiKey', 'username', 'password', 'hasPassword', 'icon', 'iconQuery', 'iconResults']);
         $this->type = 'link';
         $this->provider = 'generic';
         $this->auth_type = 'api_key';
@@ -317,9 +337,16 @@ new class extends Component
             </flux:select>
             @if ($auth_type === 'basic')
                 <flux:input wire:model="username" placeholder="Username" />
-                <flux:input wire:model="password" type="password" placeholder="Password" />
+                <flux:input
+                    wire:model="password"
+                    type="password"
+                    placeholder="{{ $hasPassword ? 'Password on file — enter a new one to replace it' : 'Password' }}"
+                />
             @else
-                <flux:input wire:model="api_key" placeholder="API key (optional)" />
+                <flux:input
+                    wire:model="api_key"
+                    placeholder="{{ $hasApiKey ? 'Key on file — enter a new one to replace it' : 'API key (optional)' }}"
+                />
             @endif
         @endif
 

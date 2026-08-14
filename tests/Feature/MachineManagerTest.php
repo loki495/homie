@@ -424,6 +424,38 @@ it('stores the ssh private key encrypted at rest', function () {
     expect($raw)->not->toBe('super-secret-key');
 });
 
+it('never prefills the ssh private key when editing a machine, but flags one is on file', function () {
+    $machine = Machine::factory()->ssh()->create(['ssh_private_key' => 'super-secret-key']);
+
+    Livewire::test('machine-manager')
+        ->call('edit', $machine->id)
+        ->assertSet('ssh_private_key', '')
+        ->assertSet('hasSshPrivateKey', true);
+});
+
+it('keeps the existing ssh private key when saving an edit with the field left blank', function () {
+    $machine = Machine::factory()->ssh()->create(['ssh_private_key' => 'super-secret-key']);
+
+    Livewire::test('machine-manager')
+        ->call('edit', $machine->id)
+        ->set('host', 'updated.lan')
+        ->call('save');
+
+    expect($machine->fresh()->ssh_private_key)->toBe('super-secret-key')
+        ->and($machine->fresh()->host)->toBe('updated.lan');
+});
+
+it('replaces the ssh private key when a new one is entered while editing', function () {
+    $machine = Machine::factory()->ssh()->create(['ssh_private_key' => 'super-secret-key']);
+
+    Livewire::test('machine-manager')
+        ->call('edit', $machine->id)
+        ->set('ssh_private_key', 'brand-new-key')
+        ->call('save');
+
+    expect($machine->fresh()->ssh_private_key)->toBe('brand-new-key');
+});
+
 it('writes a temporary identity file for the scan and cleans it up afterwards', function () {
     $machine = Machine::factory()->ssh()->create([
         'ssh_private_key' => "-----BEGIN OPENSSH PRIVATE KEY-----\nfakekeydata\n-----END OPENSSH PRIVATE KEY-----",

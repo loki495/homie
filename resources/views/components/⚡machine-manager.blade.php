@@ -25,6 +25,8 @@ new class extends Component
 
     public string $ssh_private_key = '';
 
+    public bool $hasSshPrivateKey = false;
+
     public ?int $scanningMachineId = null;
 
     /** @var list<array{name: string, image: string, url: string}> */
@@ -51,15 +53,23 @@ new class extends Component
 
         $machine = $this->editingId ? Machine::findOrFail($this->editingId) : new Machine;
 
-        $machine->fill([
+        $attributes = [
             'name' => $this->name,
             'host' => $this->host,
             'description' => $this->description !== '' ? $this->description : null,
             'discovery_method' => DiscoveryMethod::from($this->discovery_method),
             'ssh_user' => $this->discovery_method === 'ssh' && $this->ssh_user !== '' ? $this->ssh_user : null,
             'ssh_port' => $this->discovery_method === 'ssh' && $this->ssh_port !== '' ? (int) $this->ssh_port : null,
-            'ssh_private_key' => $this->discovery_method === 'ssh' && $this->ssh_private_key !== '' ? $this->ssh_private_key : null,
-        ])->save();
+        ];
+
+        if ($this->discovery_method !== 'ssh') {
+            $attributes['ssh_private_key'] = null;
+        } elseif ($this->ssh_private_key !== '') {
+            $attributes['ssh_private_key'] = $this->ssh_private_key;
+        }
+        // else: field left blank on an existing key — leave ssh_private_key untouched.
+
+        $machine->fill($attributes)->save();
 
         $this->resetForm();
     }
@@ -75,7 +85,8 @@ new class extends Component
         $this->discovery_method = $machine->discovery_method->value;
         $this->ssh_user = (string) $machine->ssh_user;
         $this->ssh_port = $machine->ssh_port !== null ? (string) $machine->ssh_port : '';
-        $this->ssh_private_key = (string) $machine->ssh_private_key;
+        $this->ssh_private_key = '';
+        $this->hasSshPrivateKey = $machine->ssh_private_key !== null;
         $this->dispatch('scroll-sidebar-top');
     }
 
@@ -86,7 +97,7 @@ new class extends Component
 
     protected function resetForm(): void
     {
-        $this->reset(['editingId', 'name', 'host', 'description', 'ssh_user', 'ssh_port', 'ssh_private_key']);
+        $this->reset(['editingId', 'name', 'host', 'description', 'ssh_user', 'ssh_port', 'ssh_private_key', 'hasSshPrivateKey']);
         $this->discovery_method = 'docker';
         $this->resetValidation();
     }
@@ -447,13 +458,17 @@ new class extends Component
             <flux:textarea
                 wire:model="ssh_private_key"
                 rows="4"
-                placeholder="-----BEGIN OPENSSH PRIVATE KEY-----&#10;...&#10;-----END OPENSSH PRIVATE KEY-----"
+                placeholder="{{ $hasSshPrivateKey ? 'Key on file — paste a new one to replace it' : '-----BEGIN OPENSSH PRIVATE KEY-----'."\n...\n".'-----END OPENSSH PRIVATE KEY-----' }}"
                 class="font-mono"
             />
             <p class="text-sm text-slate-400 dark:text-slate-500">
                 Runs <code>docker ps</code> over SSH. Key-only auth (no passwords) — paste a private key with no
-                passphrase, dedicated to this purpose. Stored encrypted. Leave blank to rely on an agent already
-                available to the container.
+                passphrase, dedicated to this purpose. Stored encrypted, never shown again once saved.
+                @if ($hasSshPrivateKey)
+                    Leave blank to keep the key already on file.
+                @else
+                    Leave blank to rely on an agent already available to the container.
+                @endif
             </p>
         @endif
 

@@ -149,7 +149,7 @@ it('creates an api card with username and password auth', function () {
         ->and($card->api->api_key)->toBeNull();
 });
 
-it('restores the saved auth type and credentials when editing an api card', function () {
+it('restores the saved auth type and username, but never the password, when editing an api card', function () {
     $card = Card::factory()->create(['type' => CardType::Api]);
     $card->api()->create([
         'provider' => ApiProvider::Generic,
@@ -163,7 +163,79 @@ it('restores the saved auth type and credentials when editing an api card', func
         ->call('edit', $card->id)
         ->assertSet('auth_type', 'basic')
         ->assertSet('username', 'admin')
-        ->assertSet('password', 'secret');
+        ->assertSet('password', '')
+        ->assertSet('hasPassword', true);
+});
+
+it('never prefills the api key when editing an api-key-auth card', function () {
+    $card = Card::factory()->create(['type' => CardType::Api]);
+    $card->api()->create([
+        'provider' => ApiProvider::Generic,
+        'base_url' => 'http://192.168.1.1',
+        'auth_type' => 'api_key',
+        'api_key' => 'secret-key',
+    ]);
+
+    Livewire::test('card-manager')
+        ->call('edit', $card->id)
+        ->assertSet('auth_type', 'api_key')
+        ->assertSet('api_key', '')
+        ->assertSet('hasApiKey', true);
+});
+
+it('keeps the existing password when saving an edit with the password field left blank', function () {
+    $card = Card::factory()->create(['type' => CardType::Api]);
+    $card->api()->create([
+        'provider' => ApiProvider::Generic,
+        'base_url' => 'http://192.168.1.1',
+        'auth_type' => 'basic',
+        'username' => 'admin',
+        'password' => 'secret',
+    ]);
+
+    Livewire::test('card-manager')
+        ->call('edit', $card->id)
+        ->set('username', 'admin2')
+        ->call('save');
+
+    expect($card->api()->first()->password)->toBe('secret')
+        ->and($card->api()->first()->username)->toBe('admin2');
+});
+
+it('replaces the password when a new one is entered while editing', function () {
+    $card = Card::factory()->create(['type' => CardType::Api]);
+    $card->api()->create([
+        'provider' => ApiProvider::Generic,
+        'base_url' => 'http://192.168.1.1',
+        'auth_type' => 'basic',
+        'username' => 'admin',
+        'password' => 'secret',
+    ]);
+
+    Livewire::test('card-manager')
+        ->call('edit', $card->id)
+        ->set('password', 'new-secret')
+        ->call('save');
+
+    expect($card->api()->first()->password)->toBe('new-secret');
+});
+
+it('keeps the existing api key when saving an edit with the api key field left blank', function () {
+    $card = Card::factory()->create(['type' => CardType::Api]);
+    $card->api()->create([
+        'provider' => ApiProvider::Generic,
+        'base_url' => 'http://192.168.1.1',
+        'auth_type' => 'api_key',
+        'api_key' => 'secret-key',
+    ]);
+
+    Livewire::test('card-manager')
+        ->call('edit', $card->id)
+        ->set('base_url', 'http://192.168.1.1:9999')
+        ->call('save');
+
+    expect($card->api()->first()->api_key)->toBe('secret-key')
+        ->and($card->api()->first()->base_url)->toBe('http://192.168.1.1:9999');
 });
 
 it('requires a url for link cards', function () {

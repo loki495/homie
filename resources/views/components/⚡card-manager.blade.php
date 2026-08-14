@@ -402,21 +402,11 @@ new class extends Component
                     </div>
                 </div>
                 <div class="flex shrink-0 items-center gap-1">
-                    <flux:button
-                        icon="pencil"
-                        variant="ghost"
-                        size="sm"
-                        wire:click="edit({{ $card->id }})"
-                        aria-label="Edit {{ $card->name }}"
-                    />
-                    <flux:button
-                        icon="trash"
-                        variant="ghost"
-                        size="sm"
-                        class="!text-rose-500 hover:!text-rose-600 dark:!text-rose-400 dark:hover:!text-rose-300"
-                        wire:click="delete({{ $card->id }})"
-                        wire:confirm="Delete this card?"
-                        aria-label="Delete {{ $card->name }}"
+                    <x-manage-item-actions
+                        edit-action="edit({{ $card->id }})"
+                        delete-action="delete({{ $card->id }})"
+                        label="{{ $card->name }}"
+                        confirm="Delete this card?"
                     />
                 </div>
             </li>

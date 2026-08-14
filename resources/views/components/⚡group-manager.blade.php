@@ -81,21 +81,11 @@ new class extends Component
             <li class="flex items-center justify-between gap-3 rounded-xl border border-slate-200 p-3.5 dark:border-slate-700">
                 <span class="truncate text-sm text-slate-700 dark:text-slate-200">{{ $group->name }}</span>
                 <div class="flex shrink-0 items-center gap-1">
-                    <flux:button
-                        icon="pencil"
-                        variant="ghost"
-                        size="sm"
-                        wire:click="edit({{ $group->id }})"
-                        aria-label="Edit {{ $group->name }}"
-                    />
-                    <flux:button
-                        icon="trash"
-                        variant="ghost"
-                        size="sm"
-                        class="!text-rose-500 hover:!text-rose-600 dark:!text-rose-400 dark:hover:!text-rose-300"
-                        wire:click="delete({{ $group->id }})"
-                        wire:confirm="Delete this group? Its cards will become ungrouped."
-                        aria-label="Delete {{ $group->name }}"
+                    <x-manage-item-actions
+                        edit-action="edit({{ $group->id }})"
+                        delete-action="delete({{ $group->id }})"
+                        label="{{ $group->name }}"
+                        confirm="Delete this group? Its cards will become ungrouped."
                     />
                 </div>
             </li>

@@ -500,21 +500,11 @@ new class extends Component
                         >
                             Scan
                         </flux:button>
-                        <flux:button
-                            icon="pencil"
-                            variant="ghost"
-                            size="sm"
-                            wire:click="edit({{ $machine->id }})"
-                            aria-label="Edit {{ $machine->name }}"
-                        />
-                        <flux:button
-                            icon="trash"
-                            variant="ghost"
-                            size="sm"
-                            class="!text-rose-500 hover:!text-rose-600 dark:!text-rose-400 dark:hover:!text-rose-300"
-                            wire:click="delete({{ $machine->id }})"
-                            wire:confirm="Delete this scan target?"
-                            aria-label="Delete {{ $machine->name }}"
+                        <x-manage-item-actions
+                            edit-action="edit({{ $machine->id }})"
+                            delete-action="delete({{ $machine->id }})"
+                            label="{{ $machine->name }}"
+                            confirm="Delete this scan target?"
                         />
                     </div>
                 </div>

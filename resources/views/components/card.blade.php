@@ -48,10 +48,14 @@
             </a>
         @endif
     @elseif ($card->type === \App\Enums\CardType::Output)
-        <livewire:card-output-widget :card="$card" :key="'card-output-'.$card->id" lazy />
+        <div @class(['opacity-75' => $editing])>
+            <livewire:card-output-widget :card="$card" :key="'card-output-'.$card->id" lazy />
+        </div>
     @elseif ($card->type === \App\Enums\CardType::Api)
         @if ($editing)
-            <livewire:card-api-widget :card="$card" :key="'card-api-'.$card->id" lazy />
+            <div class="opacity-75">
+                <livewire:card-api-widget :card="$card" :key="'card-api-'.$card->id" lazy />
+            </div>
         @else
             <a href="{{ $card->url }}" target="_blank" rel="noopener" class="block">
                 <livewire:card-api-widget :card="$card" :key="'card-api-'.$card->id" lazy />

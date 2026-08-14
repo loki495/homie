@@ -125,25 +125,54 @@ new class extends Component
         </div>
     </header>
 
+    @php
+        $groups = $this->groups();
+        $ungroupedCards = $this->ungroupedCards();
+    @endphp
+
     <main class="mx-auto max-w-5xl space-y-6 p-4 sm:p-6">
-        @foreach ($this->groups() as $group)
+        @if ($groups->isEmpty() && $ungroupedCards->isEmpty())
+            <div class="rounded-lg border border-dashed border-slate-300 bg-white p-10 text-center dark:border-slate-600 dark:bg-slate-800">
+                <p class="text-sm font-semibold text-slate-700 dark:text-slate-200">No cards yet</p>
+                <p class="mx-auto mt-1 max-w-sm text-sm text-slate-400 dark:text-slate-500">
+                    Add a link, an output card, or run a discovery scan from Manage to get started.
+                </p>
+                <button
+                    type="button"
+                    x-data
+                    x-on:click="$store.sidebar.open = true"
+                    class="mt-4 rounded-md bg-slate-800 px-4 py-2 text-xs font-semibold text-white dark:bg-slate-100 dark:text-slate-800"
+                >
+                    Open Manage
+                </button>
+            </div>
+        @endif
+
+        @foreach ($groups as $group)
             <section
                 x-data="{ open: {{ $group->collapsed ? 'false' : 'true' }} }"
                 class="rounded-lg border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-800"
             >
                 <div class="flex items-center justify-between px-4 py-3">
-                    <button type="button" @click="open = ! open" class="flex flex-1 items-center gap-2 text-left">
-                        <span class="text-sm font-semibold text-slate-700 dark:text-slate-200">{{ $group->name }}</span>
-                        <svg
-                            x-bind:class="open ? 'rotate-180' : ''"
-                            class="h-4 w-4 shrink-0 text-slate-400 transition-transform dark:text-slate-500"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke="currentColor"
+                    <h2 class="flex-1">
+                        <button
+                            type="button"
+                            @click="open = ! open"
+                            x-bind:aria-expanded="open"
+                            class="flex w-full items-center gap-2 text-left text-sm font-semibold text-slate-700 dark:text-slate-200"
                         >
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                        </svg>
-                    </button>
+                            {{ $group->name }}
+                            <svg
+                                x-bind:class="open ? 'rotate-180' : ''"
+                                class="h-4 w-4 shrink-0 text-slate-400 transition-transform dark:text-slate-500"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                            >
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                            </svg>
+                        </button>
+                    </h2>
 
                     @if ($editing)
                         <div class="flex items-center gap-1">
@@ -176,9 +205,9 @@ new class extends Component
             </section>
         @endforeach
 
-        @if ($this->ungroupedCards()->isNotEmpty())
+        @if ($ungroupedCards->isNotEmpty())
             <section class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                @foreach ($this->ungroupedCards() as $card)
+                @foreach ($ungroupedCards as $card)
                     <x-card :card="$card" :editing="$editing" />
                 @endforeach
             </section>

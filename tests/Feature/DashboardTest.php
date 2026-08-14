@@ -25,6 +25,34 @@ it('does not wrap api cards in a link while arranging', function () {
         ->assertDontSeeHtml('href="http://sonarr.lan"');
 });
 
+it('dims output and api cards the same way link cards dim while arranging', function () {
+    $outputCard = Card::factory()->create(['type' => CardType::Output, 'name' => 'Uptime']);
+    $apiCard = Card::factory()->create(['type' => CardType::Api, 'name' => 'Sonarr', 'url' => 'http://sonarr.lan']);
+    CardApi::factory()->create(['card_id' => $apiCard->id, 'base_url' => 'http://sonarr.lan']);
+
+    $component = Livewire::test('dashboard')->call('toggleEditing');
+
+    expect(substr_count($component->html(), 'opacity-75'))->toBeGreaterThanOrEqual(2);
+});
+
+it('renders group names as real headings with an aria-expanded toggle', function () {
+    Group::factory()->create(['name' => 'Media']);
+
+    Livewire::test('dashboard')
+        ->assertSeeHtml('<h2')
+        ->assertSeeHtml('aria-expanded');
+});
+
+it('shows an empty-state prompt when there are no groups or cards', function () {
+    Livewire::test('dashboard')->assertSee('No cards yet');
+});
+
+it('does not show the empty-state prompt once a card exists', function () {
+    Card::factory()->create(['group_id' => null]);
+
+    Livewire::test('dashboard')->assertDontSee('No cards yet');
+});
+
 it('renders groups with their cards and ungrouped cards', function () {
     $group = Group::factory()->create(['name' => 'Media']);
     $groupedCard = Card::factory()->create(['group_id' => $group->id, 'name' => 'Plex']);

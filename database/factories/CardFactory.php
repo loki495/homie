@@ -23,7 +23,6 @@ class CardFactory extends Factory
             'name' => ucfirst(fake()->word()),
             'type' => CardType::Link,
             'icon' => null,
-            'color' => null,
             'url' => fake()->url(),
             'sort_order' => 0,
         ];

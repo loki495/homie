@@ -21,7 +21,6 @@ class Card extends Model
         'name',
         'type',
         'icon',
-        'color',
         'url',
         'sort_order',
     ];

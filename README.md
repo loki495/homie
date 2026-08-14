@@ -59,6 +59,11 @@ docker compose run --rm vite npm install   # first time only
 Site: http://homie.dev.local.test
 Vite dev server (HMR): http://vite.homie.dev.local.test
 
+`.env.example` ships with `APP_DEBUG=false` — flip it to `true` locally if you want
+Laravel's debug error pages while developing, but leave it off anywhere the dashboard
+stays running day-to-day: this app has no login of any kind, so a debug page (full
+stack trace, file paths, query bindings) would be visible to anyone who can reach it.
+
 ### Common commands
 
 Run from the host — these wrap `docker exec` into the `homie-app` container:

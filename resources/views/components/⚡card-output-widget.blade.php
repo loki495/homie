@@ -43,6 +43,7 @@ new class extends Component
         }
 
         $this->refreshIntervalSeconds = $cardOutput->refresh_interval_seconds;
+        $this->dispatch('output-refreshed');
 
         $lock = Cache::lock("card-output-running:{$cardOutput->id}", 15);
 
@@ -102,13 +103,39 @@ new class extends Component
             @endif
             <h3 class="truncate text-sm font-semibold text-slate-700 dark:text-slate-200">{{ $card->name }}</h3>
         </div>
-        @if ($exitCode !== null)
-            <span @class([
-                'h-2 w-2 rounded-full',
-                'bg-emerald-500' => $exitCode === 0,
-                'bg-rose-500' => $exitCode !== 0,
-            ])></span>
-        @endif
+        <div class="flex shrink-0 items-center gap-1.5">
+            @if ($refreshIntervalSeconds)
+                <span
+                    x-data="{ remaining: {{ $refreshIntervalSeconds }} }"
+                    x-init="
+                        $wire.on('output-refreshed', () => { remaining = {{ $refreshIntervalSeconds }} });
+                        setInterval(() => { remaining = remaining > 0 ? remaining - 1 : 0 }, 1000);
+                    "
+                    wire:loading.remove
+                    wire:target="refreshOutput"
+                    class="-translate-y-[2px] inline-block leading-none text-xs tabular-nums text-slate-400 dark:text-slate-500"
+                    x-text="remaining + 's'"
+                ></span>
+                <svg
+                    wire:loading
+                    wire:target="refreshOutput"
+                    class="-translate-y-[2px] block h-3 w-3 shrink-0 animate-spin text-slate-400 dark:text-slate-500"
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                >
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                </svg>
+            @endif
+            @if ($exitCode !== null)
+                <span @class([
+                    '-translate-y-px h-2 w-2 rounded-full',
+                    'bg-emerald-500' => $exitCode === 0,
+                    'bg-rose-500' => $exitCode !== 0,
+                ])></span>
+            @endif
+        </div>
     </div>
     <pre class="mt-2 max-h-40 overflow-auto whitespace-pre font-mono text-xs text-slate-500 dark:text-slate-400">{{ $output ?? 'No output yet.' }}</pre>
 </div>

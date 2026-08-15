@@ -102,3 +102,41 @@ it('swaps sort_order between adjacent groups', function () {
     expect($first->fresh()->sort_order)->toBe(1)
         ->and($second->fresh()->sort_order)->toBe(0);
 });
+
+it('reorders cards to match a dropped order, batched in one call', function () {
+    $group = Group::factory()->create();
+    $first = Card::factory()->create(['group_id' => $group->id, 'sort_order' => 0]);
+    $second = Card::factory()->create(['group_id' => $group->id, 'sort_order' => 1]);
+    $third = Card::factory()->create(['group_id' => $group->id, 'sort_order' => 2]);
+
+    Livewire::test('dashboard')->call('reorderCards', [$third->id, $first->id, $second->id]);
+
+    expect($third->fresh()->sort_order)->toBe(0)
+        ->and($first->fresh()->sort_order)->toBe(1)
+        ->and($second->fresh()->sort_order)->toBe(2);
+});
+
+it('reorders groups to match a dropped order, batched in one call', function () {
+    $first = Group::factory()->create(['sort_order' => 0]);
+    $second = Group::factory()->create(['sort_order' => 1]);
+    $third = Group::factory()->create(['sort_order' => 2]);
+
+    Livewire::test('dashboard')->call('reorderGroups', [$second->id, $third->id, $first->id]);
+
+    expect($second->fresh()->sort_order)->toBe(0)
+        ->and($third->fresh()->sort_order)->toBe(1)
+        ->and($first->fresh()->sort_order)->toBe(2);
+});
+
+it('renders groups and cards as draggable only while arranging', function () {
+    $group = Group::factory()->create();
+    Card::factory()->create(['group_id' => $group->id]);
+
+    $component = Livewire::test('dashboard');
+
+    expect($component->html())->not->toContain('draggable="true"');
+
+    $component->call('toggleEditing');
+
+    expect($component->html())->toContain('draggable="true"');
+});

@@ -18,7 +18,7 @@ connections, card order, and groups — is user-configured data, not code.
 - SQLite
 - Docker + Traefik for local development
 
-## Planned features
+## Features
 
 - Service cards that open the linked site on click, each with an optional icon — paste
   any image URL, or search recognized self-hosted apps (sonarr, plex, etc.) against the
@@ -43,7 +43,9 @@ connections, card order, and groups — is user-configured data, not code.
   remaining size. API key or username/password auth, whichever the service needs.
   Clicking the card opens the service, same as a link card. A generic fallback covers
   any other API with a plain reachability check
-- Drag-and-drop card reordering
+- Drag-and-drop reordering for both cards and groups in Arrange mode (native HTML5 drag,
+  batched into a single save on drop). Up/down arrow buttons remain alongside it as a
+  fallback, since native HTML5 drag doesn't work on touch devices
 - Expandable/collapsible groups ("folders") of cards
 
 ## Local development

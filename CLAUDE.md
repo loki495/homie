@@ -97,9 +97,11 @@ non-nullable); don't add an enum case before its fetcher exists.
 `--network host` — there's no mapping to report, the container's ports *are* the host's
 ports directly. Without a fallback, every host-network container with no Traefik label
 silently vanished from discovery results (found via a real scan: Home Assistant and
-ESPHome were both missing from a host with 11 running containers). Both
-`discoverViaDocker` and `discoverViaSsh` now do a follow-up lookup for exactly these
-stragglers — `docker inspect` (SSH) or `GET /containers/{id}/json` (API) — and read the
+ESPHome were both missing from a host with 11 running containers). Both `viaDocker` and
+`viaSsh` on `app/Support/Discovery/MachineDiscovery` (extracted from
+`⚡machine-manager.blade.php` — see "Discovery logic lives outside the Livewire
+component" below) now do a follow-up lookup for exactly these stragglers — `docker
+inspect` (SSH) or `GET /containers/{id}/json` (API) — and read the
 first port out of `Config.ExposedPorts` (the image's declared `EXPOSE`, present even
 under host networking since it's build-time metadata, not a runtime port mapping).
 This only recovers a *port* for containers whose image actually declares `EXPOSE` —
@@ -174,15 +176,52 @@ command — editing the interval mid-session takes effect on the next poll witho
 extra command execution, consistent with how that listener already avoids re-running the
 command for name/icon edits (see above).
 
+## Drag-and-drop reordering sits alongside the arrow buttons, not instead of them
+
+`⚡dashboard.blade.php` supports both: native HTML5 drag-and-drop (Arrange mode only)
+*and* the original up/down arrow buttons, side by side. This was deliberate — native
+HTML5 drag-and-drop has no touch-device support at all (mobile Safari/Chrome don't
+implement it), and this dashboard is used from phones on the LAN, not just desktop. Drag
+is the fast path for a mouse; the arrows are what makes reordering possible from a
+touch device at all, so they stay. `reorderCards`/`reorderGroups` on the component take
+an ordered list of IDs and write `sort_order` in one pass — added alongside the
+existing `moveCard`/`moveGroup` (which still do the one-swap-per-click thing the arrows
+use), not replacing them. Each group/ungrouped section owns its own Alpine `x-data`
+(`dragCardIndex`/`cardOrder`/`onCardDrop`) scoped to that container's card list, and a
+separate outer `x-data` on the groups wrapper handles group-level dragging
+(`dragGroupIndex`/`groupOrder`/`onGroupDrop`) — dragging is scoped to reordering within
+a container, not moving a card between groups (same scope the arrows already had).
+`draggable`/the drag event handlers only render when `$editing` is true, same gating as
+the arrow buttons and the move-button overlay on cards.
+
 ## Discovery: don't gate on published ports alone
 
-Both `discoverViaDocker` and `discoverViaSsh` in `⚡machine-manager.blade.php` check
-for a Traefik `Host()` label *before* falling back to requiring a host-published port.
-Got this wrong once already (shipped a version that required a published port even
-when a Traefik label was present) — silently dropped every container that's only
-reachable through Traefik's internal Docker-network routing, which is the common case
-when only the reverse proxy itself publishes ports. If touching discovery again, keep
-the label-first ordering.
+Both `viaDocker` and `viaSsh` on `MachineDiscovery` check for a Traefik `Host()` label
+*before* falling back to requiring a host-published port. Got this wrong once already
+(shipped a version that required a published port even when a Traefik label was
+present) — silently dropped every container that's only reachable through Traefik's
+internal Docker-network routing, which is the common case when only the reverse proxy
+itself publishes ports. If touching discovery again, keep the label-first ordering.
+
+## Discovery logic lives outside the Livewire component
+
+`⚡machine-manager.blade.php` used to have Docker-API discovery, SSH discovery, and all
+the Traefik-label/EXPOSE-port resolution heuristics inline (400+ lines mixing that with
+plain CRUD form handling). It's now `app/Support/Discovery/MachineDiscovery`, a plain
+class with no Livewire dependency — `viaDocker(Machine $machine)` and `viaSsh(Machine
+$machine)` each return a `DiscoveryResult` DTO (`containers` + `error`) instead of
+mutating component state directly; `discover()` on the component just assigns the
+result to `$discovered`/`$scanError`. Behavior is byte-for-byte the same as before the
+move — this was a pure extraction, verified by the pre-existing `MachineManagerTest`
+suite passing unmodified through the same Livewire component boundary, plus a live SSH
+scan re-run against a real machine. One side effect worth knowing: `phpstan.neon`
+excludes `resources/views`, so this logic was silently unanalyzed by PHPStan and Rector
+the entire time it lived in a `.blade.php` file — moving it into `app/` surfaced two
+real (if minor) findings that had been invisible until then (a `collect()` call PHPStan
+couldn't resolve template types for on `mixed`-typed JSON, and one Rector first-class-
+callable modernization). Worth remembering if other blade-embedded logic ever needs the
+same treatment: extracting it isn't just cleaner, it's the only way static analysis
+ever sees it.
 
 ## Design principle: this is a distributable app
 

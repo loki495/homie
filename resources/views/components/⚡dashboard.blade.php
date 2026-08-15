@@ -67,6 +67,26 @@ new class extends Component
     }
 
     /**
+     * @param  list<int>  $orderedCardIds
+     */
+    public function reorderCards(array $orderedCardIds): void
+    {
+        foreach ($orderedCardIds as $index => $cardId) {
+            Card::where('id', $cardId)->update(['sort_order' => $index]);
+        }
+    }
+
+    /**
+     * @param  list<int>  $orderedGroupIds
+     */
+    public function reorderGroups(array $orderedGroupIds): void
+    {
+        foreach ($orderedGroupIds as $index => $groupId) {
+            Group::where('id', $groupId)->update(['sort_order' => $index]);
+        }
+    }
+
+    /**
      * @return Collection<int, Group>
      */
     public function groups(): Collection
@@ -148,67 +168,137 @@ new class extends Component
             </div>
         @endif
 
-        @foreach ($groups as $group)
-            <section
-                x-data="{ open: {{ $group->collapsed ? 'false' : 'true' }} }"
-                class="rounded-lg border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-800"
-            >
-                <div class="flex items-center justify-between px-4 py-3">
-                    <h2 class="flex-1">
-                        <button
-                            type="button"
-                            @click="open = ! open"
-                            x-bind:aria-expanded="open"
-                            class="flex w-full items-center gap-2 text-left text-sm font-semibold text-slate-700 dark:text-slate-200"
-                        >
-                            {{ $group->name }}
-                            <svg
-                                x-bind:class="open ? 'rotate-180' : ''"
-                                class="h-4 w-4 shrink-0 text-slate-400 transition-transform dark:text-slate-500"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                                stroke="currentColor"
-                            >
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                            </svg>
-                        </button>
-                    </h2>
-
+        <div
+            x-data="{
+                dragGroupIndex: null,
+                groupOrder: @js($groups->pluck('id')),
+                onGroupDrop(toIndex) {
+                    if (this.dragGroupIndex === null || this.dragGroupIndex === toIndex) { this.dragGroupIndex = null; return; }
+                    const item = this.groupOrder.splice(this.dragGroupIndex, 1)[0];
+                    this.groupOrder.splice(toIndex, 0, item);
+                    this.dragGroupIndex = null;
+                    $wire.reorderGroups(this.groupOrder);
+                },
+            }"
+            class="space-y-6"
+        >
+            @foreach ($groups as $groupIndex => $group)
+                <section
+                    x-data="{
+                        open: {{ $group->collapsed ? 'false' : 'true' }},
+                        dragCardIndex: null,
+                        cardOrder: @js($group->cards->pluck('id')),
+                        onCardDrop(toIndex) {
+                            if (this.dragCardIndex === null || this.dragCardIndex === toIndex) { this.dragCardIndex = null; return; }
+                            const item = this.cardOrder.splice(this.dragCardIndex, 1)[0];
+                            this.cardOrder.splice(toIndex, 0, item);
+                            this.dragCardIndex = null;
+                            $wire.reorderCards(this.cardOrder);
+                        },
+                    }"
                     @if ($editing)
-                        <div class="flex items-center gap-1">
-                            <button
-                                type="button"
-                                wire:click="moveGroup({{ $group->id }}, -1)"
-                                class="rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:text-slate-500 dark:hover:bg-slate-700 dark:hover:text-slate-300"
-                            >
-                                ↑
-                            </button>
-                            <button
-                                type="button"
-                                wire:click="moveGroup({{ $group->id }}, 1)"
-                                class="rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:text-slate-500 dark:hover:bg-slate-700 dark:hover:text-slate-300"
-                            >
-                                ↓
-                            </button>
-                        </div>
+                        x-on:dragover.prevent
+                        x-on:drop.prevent="onGroupDrop({{ $groupIndex }})"
                     @endif
-                </div>
-                <div
-                    x-show="open"
-                    x-transition
-                    class="grid grid-cols-1 gap-3 border-t border-slate-100 p-4 sm:grid-cols-2 lg:grid-cols-3 dark:border-slate-700"
+                    class="rounded-lg border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-800"
                 >
-                    @foreach ($group->cards as $card)
-                        <x-card :card="$card" :editing="$editing" />
-                    @endforeach
-                </div>
-            </section>
-        @endforeach
+                    <div
+                        class="flex items-center justify-between px-4 py-3"
+                        @if ($editing)
+                            draggable="true"
+                            x-on:dragstart="dragGroupIndex = {{ $groupIndex }}"
+                            class="cursor-grab active:cursor-grabbing"
+                        @endif
+                    >
+                        <h2 class="flex-1">
+                            <button
+                                type="button"
+                                @click="open = ! open"
+                                x-bind:aria-expanded="open"
+                                class="flex w-full items-center gap-2 text-left text-sm font-semibold text-slate-700 dark:text-slate-200"
+                            >
+                                {{ $group->name }}
+                                <svg
+                                    x-bind:class="open ? 'rotate-180' : ''"
+                                    class="h-4 w-4 shrink-0 text-slate-400 transition-transform dark:text-slate-500"
+                                    fill="none"
+                                    viewBox="0 0 24 24"
+                                    stroke="currentColor"
+                                >
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                                </svg>
+                            </button>
+                        </h2>
+
+                        @if ($editing)
+                            <div class="flex items-center gap-1">
+                                <button
+                                    type="button"
+                                    wire:click="moveGroup({{ $group->id }}, -1)"
+                                    class="rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:text-slate-500 dark:hover:bg-slate-700 dark:hover:text-slate-300"
+                                >
+                                    ↑
+                                </button>
+                                <button
+                                    type="button"
+                                    wire:click="moveGroup({{ $group->id }}, 1)"
+                                    class="rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:text-slate-500 dark:hover:bg-slate-700 dark:hover:text-slate-300"
+                                >
+                                    ↓
+                                </button>
+                            </div>
+                        @endif
+                    </div>
+                    <div
+                        x-show="open"
+                        x-transition
+                        class="grid grid-cols-1 gap-3 border-t border-slate-100 p-4 sm:grid-cols-2 lg:grid-cols-3 dark:border-slate-700"
+                    >
+                        @foreach ($group->cards as $cardIndex => $card)
+                            <div
+                                @if ($editing)
+                                    draggable="true"
+                                    x-on:dragstart.stop="dragCardIndex = {{ $cardIndex }}"
+                                    x-on:dragover.prevent.stop
+                                    x-on:drop.prevent.stop="onCardDrop({{ $cardIndex }})"
+                                    class="cursor-grab active:cursor-grabbing"
+                                @endif
+                            >
+                                <x-card :card="$card" :editing="$editing" />
+                            </div>
+                        @endforeach
+                    </div>
+                </section>
+            @endforeach
+        </div>
 
         @if ($ungroupedCards->isNotEmpty())
-            <section class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                @foreach ($ungroupedCards as $card)
-                    <x-card :card="$card" :editing="$editing" />
+            <section
+                x-data="{
+                    dragCardIndex: null,
+                    cardOrder: @js($ungroupedCards->pluck('id')),
+                    onCardDrop(toIndex) {
+                        if (this.dragCardIndex === null || this.dragCardIndex === toIndex) { this.dragCardIndex = null; return; }
+                        const item = this.cardOrder.splice(this.dragCardIndex, 1)[0];
+                        this.cardOrder.splice(toIndex, 0, item);
+                        this.dragCardIndex = null;
+                        $wire.reorderCards(this.cardOrder);
+                    },
+                }"
+                class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3"
+            >
+                @foreach ($ungroupedCards as $cardIndex => $card)
+                    <div
+                        @if ($editing)
+                            draggable="true"
+                            x-on:dragstart="dragCardIndex = {{ $cardIndex }}"
+                            x-on:dragover.prevent
+                            x-on:drop.prevent="onCardDrop({{ $cardIndex }})"
+                            class="cursor-grab active:cursor-grabbing"
+                        @endif
+                    >
+                        <x-card :card="$card" :editing="$editing" />
+                    </div>
                 @endforeach
             </section>
         @endif

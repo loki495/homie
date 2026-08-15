@@ -48,16 +48,37 @@
             </a>
         @endif
     @elseif ($card->type === \App\Enums\CardType::Output)
-        <div @class(['opacity-75' => $editing])>
+        <div @class(['rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-800', 'opacity-75' => $editing])>
+            <div class="flex items-center gap-2.5">
+                @if ($card->icon)
+                    <x-card-icon :src="$card->icon" class="h-5 w-5 shrink-0 object-contain" />
+                @endif
+                <h3 class="truncate text-sm font-semibold text-slate-700 dark:text-slate-200">{{ $card->name }}</h3>
+            </div>
             <livewire:card-output-widget :card="$card" :key="'card-output-'.$card->id" lazy />
         </div>
     @elseif ($card->type === \App\Enums\CardType::Api)
+        @php
+            $apiCardClasses = 'block rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-800'.($editing ? ' opacity-75' : '');
+        @endphp
         @if ($editing)
-            <div class="opacity-75">
+            <div class="{{ $apiCardClasses }}">
+                <div class="flex items-center gap-2.5">
+                    @if ($card->icon)
+                        <x-card-icon :src="$card->icon" class="h-5 w-5 shrink-0 object-contain" />
+                    @endif
+                    <h3 class="truncate text-sm font-semibold text-slate-700 dark:text-slate-200">{{ $card->name }}</h3>
+                </div>
                 <livewire:card-api-widget :card="$card" :key="'card-api-'.$card->id" lazy />
             </div>
         @else
-            <a href="{{ $card->url }}" target="_blank" rel="noopener" class="block">
+            <a href="{{ $card->url }}" target="_blank" rel="noopener" class="{{ $apiCardClasses }}">
+                <div class="flex items-center gap-2.5">
+                    @if ($card->icon)
+                        <x-card-icon :src="$card->icon" class="h-5 w-5 shrink-0 object-contain" />
+                    @endif
+                    <h3 class="truncate text-sm font-semibold text-slate-700 dark:text-slate-200">{{ $card->name }}</h3>
+                </div>
                 <livewire:card-api-widget :card="$card" :key="'card-api-'.$card->id" lazy />
             </a>
         @endif

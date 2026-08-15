@@ -83,59 +83,48 @@ new class extends Component
     public function placeholder(): string
     {
         return <<<'HTML'
-            <div class="animate-pulse rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-800">
-                <div class="h-4 w-24 rounded bg-slate-200 dark:bg-slate-700"></div>
-                <div class="mt-3 h-16 rounded bg-slate-100 dark:bg-slate-700/50"></div>
+            <div class="animate-pulse">
+                <div class="ml-auto mt-1 h-3 w-10 rounded bg-slate-100 dark:bg-slate-700/50"></div>
+                <div class="mt-2 h-16 rounded bg-slate-100 dark:bg-slate-700/50"></div>
             </div>
         HTML;
     }
 };
 ?>
 
-<div
-    class="rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-800"
-    @if ($refreshIntervalSeconds) wire:poll.{{ $refreshIntervalSeconds }}s="refreshOutput" @endif
->
-    <div class="flex items-center justify-between">
-        <div class="flex min-w-0 items-center gap-2.5">
-            @if ($card->icon)
-                <x-card-icon :src="$card->icon" class="h-5 w-5 shrink-0 object-contain" />
-            @endif
-            <h3 class="truncate text-sm font-semibold text-slate-700 dark:text-slate-200">{{ $card->name }}</h3>
-        </div>
-        <div class="flex shrink-0 items-center gap-1.5">
-            @if ($refreshIntervalSeconds)
-                <span
-                    x-data="{ remaining: {{ $refreshIntervalSeconds }} }"
-                    x-init="
-                        $wire.on('output-refreshed', () => { remaining = {{ $refreshIntervalSeconds }} });
-                        setInterval(() => { remaining = remaining > 0 ? remaining - 1 : 0 }, 1000);
-                    "
-                    wire:loading.remove
-                    wire:target="refreshOutput"
-                    class="-translate-y-[2px] inline-block leading-none text-xs tabular-nums text-slate-400 dark:text-slate-500"
-                    x-text="remaining + 's'"
-                ></span>
-                <svg
-                    wire:loading
-                    wire:target="refreshOutput"
-                    class="-translate-y-[2px] block h-3 w-3 shrink-0 animate-spin text-slate-400 dark:text-slate-500"
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                >
-                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
-                </svg>
-            @endif
-            @if ($exitCode !== null)
-                <span @class([
-                    '-translate-y-px h-2 w-2 rounded-full',
-                    'bg-emerald-500' => $exitCode === 0,
-                    'bg-rose-500' => $exitCode !== 0,
-                ])></span>
-            @endif
-        </div>
+<div @if ($refreshIntervalSeconds) wire:poll.{{ $refreshIntervalSeconds }}s="refreshOutput" @endif>
+    <div class="flex items-center justify-end gap-1.5">
+        @if ($refreshIntervalSeconds)
+            <span
+                x-data="{ remaining: {{ $refreshIntervalSeconds }} }"
+                x-init="
+                    $wire.on('output-refreshed', () => { remaining = {{ $refreshIntervalSeconds }} });
+                    setInterval(() => { remaining = remaining > 0 ? remaining - 1 : 0 }, 1000);
+                "
+                wire:loading.remove
+                wire:target="refreshOutput"
+                class="-translate-y-[2px] inline-block leading-none text-xs tabular-nums text-slate-400 dark:text-slate-500"
+                x-text="remaining + 's'"
+            ></span>
+            <svg
+                wire:loading
+                wire:target="refreshOutput"
+                class="-translate-y-[2px] block h-3 w-3 shrink-0 animate-spin text-slate-400 dark:text-slate-500"
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+            >
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+            </svg>
+        @endif
+        @if ($exitCode !== null)
+            <span @class([
+                '-translate-y-px h-2 w-2 rounded-full',
+                'bg-emerald-500' => $exitCode === 0,
+                'bg-rose-500' => $exitCode !== 0,
+            ])></span>
+        @endif
     </div>
     <pre class="mt-2 max-h-40 overflow-auto whitespace-pre font-mono text-xs text-slate-500 dark:text-slate-400">{{ $output ?? 'No output yet.' }}</pre>
 </div>

@@ -1,7 +1,2 @@
-- Lazy-loaded cards (output/api widgets, `lazy` on `<livewire:...>` in card.blade.php) currently
-  show a full skeleton placeholder for the whole card while loading. Ideally the title/icon
-  would render immediately (non-lazy) and only the fetched content (output/API stats) would be
-  the lazy part.
-
 - Manage sidebar's Cards tab list (⚡card-manager.blade.php) could use a dropdown filter by
   group, alongside/instead of the existing plain-text Alpine filter.

@@ -139,22 +139,25 @@ it('re-runs the command each time refreshOutput is polled', function () {
     Process::assertRanTimes('df -h', 3);
 });
 
-it('picks up card name and icon changes without re-running the command', function () {
+it('picks up a changed refresh interval without re-running the command', function () {
     Process::fake([
         '*' => Process::result(output: "mocked disk output\n", exitCode: 0),
     ]);
 
-    $card = Card::factory()->create(['type' => CardType::Output, 'name' => 'Old Name']);
-    CardOutput::factory()->create(['card_id' => $card->id, 'command' => 'df -h']);
+    $card = Card::factory()->create(['type' => CardType::Output]);
+    $cardOutput = CardOutput::factory()->create([
+        'card_id' => $card->id,
+        'command' => 'df -h',
+        'refresh_interval_seconds' => 30,
+    ]);
 
     $component = Livewire::test('card-output-widget', ['card' => $card])
-        ->assertSee('Old Name');
+        ->assertSeeHtml('wire:poll.30s="refreshOutput"');
 
-    $card->update(['name' => 'New Name', 'icon' => 'https://example.test/icon.svg']);
+    $cardOutput->update(['refresh_interval_seconds' => 60]);
 
     $component->dispatch('dashboard-updated')
-        ->assertSee('New Name')
-        ->assertSee('https://example.test/icon.svg');
+        ->assertSeeHtml('wire:poll.60s="refreshOutput"');
 
     Process::assertRanTimes('df -h', 1);
 });

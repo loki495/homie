@@ -5,7 +5,9 @@ declare(strict_types=1);
 use App\Enums\CardType;
 use App\Models\Card;
 use App\Models\CardApi;
+use App\Models\CardOutput;
 use App\Models\Group;
+use Illuminate\Support\Facades\Process;
 use Livewire\Livewire;
 
 it('wraps api cards in a link to their url outside arrange mode', function () {
@@ -62,6 +64,26 @@ it('renders groups with their cards and ungrouped cards', function () {
         ->assertSee('Media')
         ->assertSee($groupedCard->name)
         ->assertSee($ungroupedCard->name);
+});
+
+it('renders an output card\'s title immediately, without waiting on its lazy-loaded content', function () {
+    Process::fake(['*' => Process::result(output: 'mocked disk output', exitCode: 0)]);
+
+    $card = Card::factory()->create(['type' => CardType::Output, 'name' => 'Uptime']);
+    CardOutput::factory()->create(['card_id' => $card->id, 'command' => 'df -h']);
+
+    Livewire::test('dashboard')
+        ->assertSee('Uptime')
+        ->assertDontSee('mocked disk output');
+});
+
+it('renders an api card\'s title immediately, without waiting on its lazy-loaded content', function () {
+    $card = Card::factory()->create(['type' => CardType::Api, 'name' => 'Sonarr', 'url' => 'http://sonarr.lan']);
+    CardApi::factory()->create(['card_id' => $card->id, 'base_url' => 'http://sonarr.lan']);
+
+    Livewire::test('dashboard')
+        ->assertSee('Sonarr')
+        ->assertDontSee('HTTP');
 });
 
 it('swaps sort_order with the next sibling in the same group when moving a card down', function () {

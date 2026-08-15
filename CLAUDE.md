@@ -123,23 +123,46 @@ itself, rather than having the widget component decide whether to render a link.
 deliberate: `$editing` (Arrange mode) needs to gate the link exactly like it already does
 for Link-type cards — no `<a>` while arranging, so clicking a card doesn't navigate away
 mid-drag. If that logic lived inside `⚡card-api-widget.blade.php` instead, it'd hit the
-same lazy-load-island staleness problem as the entry above (`$editing` passed as a prop
+same lazy-load-island staleness problem as the entry below (`$editing` passed as a prop
 would only reflect its value at first mount, not later toggles of Arrange mode). Doing
 the wrap in `card.blade.php` sidesteps that entirely — it's a plain Blade partial that
-always re-renders fresh with Dashboard, no separate component lifecycle involved.
+always re-renders fresh with Dashboard, no separate component lifecycle involved. The
+same wrapper also now renders the card's icon/name (see the entry below) — `card.blade.php`
+owns the whole visible box (border/bg/padding) for Output and Api cards, not just the link.
 
-## Output/API widgets don't reactively see Card edits
+## Card titles render eagerly; only fetched content is lazy-loaded
 
 `⚡card-output-widget.blade.php` and `⚡card-api-widget.blade.php` are `lazy`-loaded
-nested Livewire components, so they're independent islands after their first hydration —
-editing a card's name/icon in the sidebar and having Dashboard re-render via the
-`dashboard-updated` event does *not* propagate into already-mounted children. (Tried
-`#[Reactive]` on the `card` prop first — doesn't cross the lazy-load boundary in
-practice, and complicates mount() since a `#[Reactive]` prop can't be reassigned from
-inside the component without throwing `CannotMutateReactivePropException`.) Fixed by
-giving both widgets their own `#[On('dashboard-updated')]` listener that does
-`$this->card = $this->card->fresh();` — cheap, and deliberately does *not* re-run the
-shell command / API fetch on every dashboard change.
+nested Livewire components — Livewire renders their `placeholder()` skeleton on first
+paint and only mounts the real component (running the shell command / API fetch) on a
+follow-up request. Originally the icon/name lived *inside* those widgets, so every
+output/api card showed a full generic skeleton box on load with no indication of what
+it even was. Icon/name are cheap, already-loaded `Card` attributes — no reason to gate
+them behind the same round-trip as an actual command execution or HTTP call. Fixed by
+moving the icon/name markup out into `card.blade.php` (a plain Blade partial, rendered
+eagerly, no lazy boundary) and shrinking each widget's own template down to just the
+part that genuinely depends on the fetch: status dot, refresh countdown/spinner, and
+the output/stats body. `card.blade.php` now owns the full card box (border/bg/padding)
+for Output and Api cards; the widgets' `placeholder()`/root templates no longer include
+their own border or box, only a content-shaped skeleton. Verified via
+`Livewire::test('dashboard')` — the card's name is present in the very first render
+pass (before the lazy child ever mounts), while the widget's actual fetched content is
+provably absent until the follow-up request (see `DashboardTest`'s "renders ... title
+immediately, without waiting on its lazy-loaded content" tests, which assert exactly
+that split).
+
+One side effect: since icon/name no longer live inside the widgets, the
+`#[On('dashboard-updated')] refreshCard()` listener that used to exist on both widgets
+purely to catch up `$this->card->fresh()` after a sidebar edit is now moot for
+`⚡card-api-widget.blade.php` (nothing else in that widget depends on `$card` after
+`mount()`) — removed entirely. `⚡card-output-widget.blade.php` keeps its listener,
+because it does other useful work: refreshing `$refreshIntervalSeconds` from
+`$this->card->output?->refresh_interval_seconds` so an edited poll interval takes
+effect without re-running the command (see the wire:poll entry below) — that's
+unrelated to the header and still needed. (`#[Reactive]` on the `card` prop was tried
+originally for this same staleness problem — doesn't cross the lazy-load boundary in
+practice, and complicates `mount()` since a `#[Reactive]` prop can't be reassigned from
+inside the component without throwing `CannotMutateReactivePropException`.)
 
 ## Output cards and SSH discovery must never let Process exceptions escape
 

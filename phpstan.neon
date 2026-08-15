@@ -4,6 +4,15 @@ includes:
 parameters:
     level: 6
 
+    # Larastan defaults this to false, so it only reads type/enum casts off the old
+    # $casts property and stays blind to Laravel 11+'s casts() method — every
+    # enum-casted column here (Card::type, CardApi::provider, Machine::discovery_method,
+    # ...) was invisible to static analysis as a result (silently treated as plain
+    # string, so ->value access on them went unchecked). Found while writing
+    # ConfigExporter, which was the first code to access ->value on one of these
+    # outside the model itself.
+    parseModelCastsMethod: true
+
     paths:
         - app
         - routes

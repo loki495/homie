@@ -223,6 +223,19 @@ callable modernization). Worth remembering if other blade-embedded logic ever ne
 same treatment: extracting it isn't just cleaner, it's the only way static analysis
 ever sees it.
 
+## PHPStan was blind to every enum-casted model property until this was found
+
+Larastan's `parseModelCastsMethod` option defaults to `false`, so it only reads type
+casts off the legacy `$casts` property and never parses the `casts()` method body —
+the pattern this project's models actually use (Laravel 11+ convention). Every
+enum-casted property (`Card::type`, `CardApi::provider`, `Machine::discovery_method`)
+was therefore typed as plain `string` by static analysis the whole time, silently
+missing any `->value`-style misuse. Found while writing `ConfigExporter` (see below),
+the first code outside a model to access one of these with `->value`. Fixed by setting
+`parameters.parseModelCastsMethod: true` in `phpstan.neon` — re-running the full suite
+after that change turned up no other latent errors, but it's worth knowing this gap
+existed in case a similarly-shaped issue resurfaces with a newer Larastan release.
+
 ## Design principle: this is a distributable app
 
 No lab-specific machine name, hostname, IP, service, or credential should ever be

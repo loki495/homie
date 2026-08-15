@@ -1,8 +1,3 @@
-- Card icon search (⚡card-manager.blade.php, app/Support/DashboardIcons.php) currently only
-  searches the homarr-labs/dashboard-icons index (app logos). Add a second, generic icon set
-  (e.g. Heroicons or similar) so non-app icons are searchable too — for link/output cards that
-  aren't a specific branded service.
-
 - Lazy-loaded cards (output/api widgets, `lazy` on `<livewire:...>` in card.blade.php) currently
   show a full skeleton placeholder for the whole card while loading. Ideally the title/icon
   would render immediately (non-lazy) and only the fetched content (output/API stats) would be

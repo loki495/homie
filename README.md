@@ -47,6 +47,10 @@ connections, card order, and groups — is user-configured data, not code.
   batched into a single save on drop). Up/down arrow buttons remain alongside it as a
   fallback, since native HTML5 drag doesn't work on touch devices
 - Expandable/collapsible groups ("folders") of cards
+- Backup: export the whole config (groups, cards, scan targets) as one JSON file, and
+  restore from it later or on a new box. API keys, passwords, and SSH private keys are
+  never included in the export — re-enter those after a restore. Importing replaces
+  everything currently configured, it doesn't merge
 
 ## Local development
 

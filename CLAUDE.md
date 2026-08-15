@@ -236,6 +236,49 @@ the first code outside a model to access one of these with `->value`. Fixed by s
 after that change turned up no other latent errors, but it's worth knowing this gap
 existed in case a similarly-shaped issue resurfaces with a newer Larastan release.
 
+## Config export/import (Backup tab)
+
+`app/Support/Config/ConfigExporter` and `ConfigImporter` (both plain classes, no
+Livewire dependency, same pattern as `MachineDiscovery`) back the sidebar's "Backup"
+tab (`⚡backup-manager.blade.php`). Export walks groups → cards → output/api, and
+machines, into one JSON structure; import is a **full replace**, not a merge — it
+deletes every existing group/card/machine inside one DB transaction before recreating
+them from the file, so re-importing the same file twice never duplicates anything, but
+it does mean import is destructive by design (the UI guards it with a plain
+`confirm()` before the upload is even sent to `$wire.import()`).
+
+Secrets (`card_apis.api_key`/`password`, `machines.ssh_private_key`) are **never**
+included in the export — only a `has_api_key`/`has_password`/`has_ssh_private_key`
+boolean, so a restore can tell the user which cards/machines need credentials
+re-entered afterward rather than silently leaving them broken. This was a deliberate
+choice over "export with a warning": a JSON backup file is far more likely to be
+copied, shared, or committed somewhere by accident than the SQLite file it's backing
+up, so secrets simply never leave the database. Runtime/cache fields (`last_output`,
+`cached_data`, `last_fetched_at`, ...) are excluded too — this is a config backup, not
+a full table dump, and all of those regenerate on next poll/fetch.
+
+Both classes build their arrays with explicit `foreach` loops rather than
+`Collection::map()` chains — the latter left Larastan unable to resolve the closures'
+return types here, same class of issue as the `collect()`-on-mixed-data problem
+documented above for `MachineDiscovery`/`DashboardIcons`.
+
+`ConfigImporter` validates every row defensively (`is_array`/`is_string` checks,
+`Enum::tryFrom()` for type/provider/discovery-method fields) rather than through
+Laravel's validator: this reads a user-supplied file that could be hand-edited, from
+an older export version, or just malformed, and a single bad row should be skipped
+with a warning rather than aborting the whole restore.
+
+Verified live against the real dashboard: exported the actual production-data SQLite
+file, re-imported it through the browser (confirm dialog and all), and diffed the
+result — structure matched exactly, and API/SSH-backed cards correctly went to
+"Could not reach"/permission-denied since their secrets were (as designed) stripped.
+The live DB was backed up first and restored afterward; restoring the raw SQLite file
+bypasses `MachineObserver`, so the `storage/ssh/{slug}` synced key files it manages
+were left in their post-import (deleted) state — a plain `$machine->save()` per
+affected machine re-triggers the sync. Worth remembering if the DB file is ever
+restored from a snapshot outside the app itself: `storage/ssh/` needs a manual resync
+afterward, it doesn't self-heal from the DB alone.
+
 ## Design principle: this is a distributable app
 
 No lab-specific machine name, hostname, IP, service, or credential should ever be

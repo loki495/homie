@@ -67,6 +67,14 @@ new class extends Component
                 >
                     Discovery
                 </button>
+                <button
+                    type="button"
+                    x-on:click="tab = 'backup'"
+                    x-bind:class="tab === 'backup' ? 'border-slate-800 text-slate-800 dark:border-slate-100 dark:text-slate-100' : 'border-transparent text-slate-400'"
+                    class="flex-1 border-b-2 py-3.5 text-sm font-semibold"
+                >
+                    Backup
+                </button>
             </div>
 
             <div
@@ -82,6 +90,9 @@ new class extends Component
                 </div>
                 <div x-show="tab === 'machines'">
                     <livewire:machine-manager />
+                </div>
+                <div x-show="tab === 'backup'">
+                    <livewire:backup-manager />
                 </div>
             </div>
         </div>

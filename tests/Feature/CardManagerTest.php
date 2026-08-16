@@ -399,3 +399,16 @@ it('restores the saved icon when editing a card', function () {
         ->call('edit', $card->id)
         ->assertSet('icon', 'https://example.test/plex.svg');
 });
+
+it('renders a group filter dropdown with an ungrouped option and each group tagged for filtering', function () {
+    $group = Group::factory()->create(['name' => 'Media']);
+    Card::factory()->create(['group_id' => $group->id, 'name' => 'Plex']);
+    Card::factory()->create(['group_id' => null, 'name' => 'Router']);
+
+    Livewire::test('card-manager')
+        ->assertSeeHtml('value="all"')
+        ->assertSeeHtml('value="none"')
+        ->assertSeeHtml('value="'.$group->id.'"')
+        ->assertSeeHtml('data-group="'.$group->id.'"')
+        ->assertSeeHtml('data-group="none"');
+});

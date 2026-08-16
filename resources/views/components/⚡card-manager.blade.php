@@ -380,14 +380,24 @@ new class extends Component
         </div>
     </form>
 
-    <div x-data="{ filter: '' }" class="space-y-2">
-        <flux:input x-model="filter" placeholder="Filter cards..." />
+    <div x-data="{ filter: '', groupFilter: 'all' }" class="space-y-2">
+        <div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
+            <flux:input x-model="filter" placeholder="Filter cards..." />
+            <flux:select x-model="groupFilter">
+                <flux:select.option value="all">All groups</flux:select.option>
+                <flux:select.option value="none">Ungrouped</flux:select.option>
+                @foreach ($this->groupOptions() as $group)
+                    <flux:select.option value="{{ $group->id }}">{{ $group->name }}</flux:select.option>
+                @endforeach
+            </flux:select>
+        </div>
 
         <ul class="space-y-2">
         @forelse ($this->cards() as $card)
             <li
-                x-show="!filter || $el.dataset.search.includes(filter.toLowerCase())"
+                x-show="(!filter || $el.dataset.search.includes(filter.toLowerCase())) && (groupFilter === 'all' || $el.dataset.group === groupFilter)"
                 data-search="{{ strtolower($card->name.' '.$card->type->value.' '.($card->group?->name ?? '')) }}"
+                data-group="{{ $card->group_id ?? 'none' }}"
                 class="flex items-center justify-between gap-3 rounded-xl border border-slate-200 p-3.5 dark:border-slate-700"
             >
                 <div class="flex min-w-0 items-center gap-2.5">

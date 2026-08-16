@@ -1,2 +1,0 @@
-- Manage sidebar's Cards tab list (⚡card-manager.blade.php) could use a dropdown filter by
-  group, alongside/instead of the existing plain-text Alpine filter.

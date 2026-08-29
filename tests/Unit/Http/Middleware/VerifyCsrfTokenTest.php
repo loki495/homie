@@ -35,6 +35,15 @@ it('bypasses the CSRF token check for a request from a reserved (loopback) IP', 
     expect(callTokensMatch($request))->toBeTrue();
 });
 
+it('does not bypass CSRF for a tunneled request arriving from a private origin IP', function () {
+    $request = Request::create('/', 'POST');
+    $request->server->set('REMOTE_ADDR', '127.0.0.1');
+    $request->headers->set('CF-Connecting-IP', '203.0.113.5');
+    $request->setLaravelSession(app('session.store'));
+
+    expect(callTokensMatch($request))->toBeFalse();
+});
+
 it('still requires a matching token for a request from a public IP', function () {
     $request = Request::create('/', 'POST');
     $request->server->set('REMOTE_ADDR', '203.0.113.5');

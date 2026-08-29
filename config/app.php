@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 return [
 
     /*
@@ -53,6 +55,22 @@ return [
     */
 
     'url' => env('APP_URL', 'http://localhost'),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Static Asset Hosts
+    |--------------------------------------------------------------------------
+    |
+    | Requests for these hosts use the built Vite manifest even when a local
+    | Vite hot file exists. This keeps LAN HMR available without exposing the
+    | development server through a remote-access tunnel.
+    |
+    */
+
+    'static_asset_hosts' => array_values(array_filter(array_map(
+        trim(...),
+        explode(',', (string) env('STATIC_ASSET_HOSTS', '')),
+    ))),
 
     /*
     |--------------------------------------------------------------------------

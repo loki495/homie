@@ -65,6 +65,12 @@ docker compose run --rm vite npm install   # first time only
 Site: http://homie.dev.local.test
 Vite dev server (HMR): http://vite.homie.dev.local.test
 
+An optional Cloudflare Tunnel deployment can expose the dashboard at the
+`APP_URL` hostname while retaining the LAN URL above. Set `STATIC_ASSET_HOSTS`
+to the externally exposed hostname so remote requests use the built Vite
+assets instead of exposing the development server. Run `npm run build` after
+frontend changes intended for remote access.
+
 `.env.example` ships with `APP_DEBUG=false` — flip it to `true` locally if you want
 Laravel's debug error pages while developing, but leave it off anywhere the dashboard
 stays running day-to-day: this app has no login of any kind, so a debug page (full

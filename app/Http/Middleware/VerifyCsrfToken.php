@@ -15,6 +15,10 @@ class VerifyCsrfToken extends Middleware
 
     private function isLanRequest(Request $request): bool
     {
+        if ($request->headers->has('CF-Connecting-IP')) {
+            return false;
+        }
+
         return filter_var(
             $request->ip(),
             FILTER_VALIDATE_IP,

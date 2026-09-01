@@ -9,6 +9,15 @@ Built to be **distributable**: no service, machine, or credential is hardcoded a
 in the app. Everything — services, machine targets, output-card commands, API
 connections, card order, and groups — is user-configured data, not code.
 
+## Screenshots
+
+| Light | Dark |
+| --- | --- |
+| ![Dashboard, light mode](docs/screenshots/dashboard.png) | ![Dashboard, dark mode](docs/screenshots/dashboard-dark.png) |
+
+Shown with a small set of sample cards (`php artisan db:seed --class=DemoDashboardSeeder`) — a
+real dashboard fills in with whatever services you configure.
+
 ## Stack
 
 - Laravel 13
@@ -52,6 +61,31 @@ connections, card order, and groups — is user-configured data, not code.
   never included in the export — re-enter those after a restore. Importing replaces
   everything currently configured, it doesn't merge
 
+## Major implementation decisions
+
+- **Discovery prefers a container's Traefik label over its published port.** An earlier
+  version required a host-published port even when a Traefik `Host()` label was present,
+  which silently dropped every container only reachable through Traefik's internal
+  Docker-network routing — the common case when only the reverse proxy itself publishes
+  ports. Label-first ordering is now load-bearing; see `app/Support/Discovery/MachineDiscovery`.
+- **Host-network containers get an `EXPOSE`-port fallback, not a dropped result.**
+  `docker ps`/`/containers/json` report empty ports for `--network host` containers, so a
+  real scan was silently missing things like Home Assistant and ESPHome. Discovery now
+  falls back to the image's declared `EXPOSE` port, and — for images that declare none —
+  still surfaces the container with a bare host URL rather than dropping it. A hardcoded
+  per-image default port was considered and rejected as exactly the kind of
+  lab-specific special-casing this project's distributability rule forbids.
+- **Config export never includes secrets.** Backup/restore (`app/Support/Config/ConfigExporter`
+  and `ConfigImporter`) walks the whole config into one JSON file, but API keys, passwords,
+  and SSH private keys are replaced with a boolean (`has_api_key`, etc.) rather than
+  exported — a JSON backup is far more likely to end up copied or committed somewhere
+  by accident than the SQLite file it's backing up.
+- **Card icon/name render eagerly; only fetched content is lazy-loaded.** Output/API cards
+  are lazy-loaded Livewire components so a slow shell command or HTTP call doesn't block
+  first paint — but the icon and name are plain, already-loaded `Card` attributes, so they
+  moved out into an eagerly-rendered Blade partial instead of sitting behind the same
+  lazy boundary as the fetch itself.
+
 ## Local development
 
 Requires Docker and a `web` external Docker network with Traefik routing
@@ -76,16 +110,16 @@ Laravel's debug error pages while developing, but leave it off anywhere the dash
 stays running day-to-day: this app has no login of any kind, so a debug page (full
 stack trace, file paths, query bindings) would be visible to anyone who can reach it.
 
-### Common commands
+### Testing and code quality
 
 Run from the host — these wrap `docker exec` into the `homie-app` container:
 
 ```bash
+composer pest         # run the test suite (Pest)
 composer pint         # code style (auto-fix)
 composer phpstan      # static analysis (level 6)
 composer rector       # modernization suggestions (dry-run only)
 composer rector:apply # apply rector changes (review the diff first)
-composer pest         # run the test suite
 ```
 
 ### Ownership note
@@ -103,6 +137,19 @@ as root and end up with permission errors editing files afterward, fix ownership
 ```bash
 docker exec -u root homie-app chown -R 1000:1000 /var/www/html
 ```
+
+## Current limitations
+
+- No authentication of any kind — access control is entirely "don't expose this to
+  the internet without a login of your own in front of it" (see the `APP_DEBUG` note
+  above). Not suitable for anything but a LAN or an authenticated reverse-proxy setup.
+- Docker discovery only understands the Docker Engine API and `docker ps` over SSH —
+  no Kubernetes, Podman, or other container runtimes.
+- Output cards run whatever shell command you configure with no sandboxing beyond
+  the container it runs in; treat this the same as you would any other tool that
+  runs arbitrary shell commands you wrote yourself.
+- API integrations cover the *arr stack (Sonarr/Radarr/Prowlarr/Bazarr) and NZBGet —
+  anything else falls back to a plain reachability check, not real stats.
 
 ## Git workflow
 

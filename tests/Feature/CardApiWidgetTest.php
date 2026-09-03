@@ -121,6 +121,61 @@ it('shows series, missing, and queue counts for a sonarr card', function () {
     Http::assertSent(fn ($request) => $request->hasHeader('X-Api-Key', 'secret'));
 });
 
+it('shows the 5 most recent downloaded and deleted files with timestamps for a sonarr card', function () {
+    Http::fake([
+        '*/api/v3/series' => Http::response([['id' => 1, 'title' => 'Show One']], 200),
+        '*/api/v3/wanted/missing*' => Http::response(['totalRecords' => 0], 200),
+        '*/api/v3/queue*' => Http::response(['totalRecords' => 0], 200),
+        '*eventType=3*' => Http::response([
+            'records' => [
+                ['sourceTitle' => 'Show.One.S01E01.1080p.WEB-DL', 'date' => now()->subHour()->toIso8601String()],
+            ],
+        ], 200),
+        '*eventType=5*' => Http::response([
+            'records' => [
+                ['sourceTitle' => 'Show One/Season 01/Show.One.S01E00.720p.HDTV.mkv', 'date' => now()->subDay()->toIso8601String()],
+            ],
+        ], 200),
+    ]);
+
+    $card = Card::factory()->create(['type' => CardType::Api]);
+    CardApi::factory()->create([
+        'card_id' => $card->id,
+        'provider' => ApiProvider::Sonarr,
+        'base_url' => 'http://sonarr.lan',
+    ]);
+
+    Livewire::test('card-api-widget', ['card' => $card])
+        ->assertSee('Recently downloaded')
+        ->assertSee('Show.One.S01E01.1080p.WEB-DL')
+        ->assertSee('1 hour ago')
+        ->assertSee('Recently deleted')
+        ->assertSee('Show.One.S01E00.720p.HDTV.mkv')
+        ->assertDontSee('Show One/Season 01/Show.One.S01E00.720p.HDTV.mkv')
+        ->assertSee('1 day ago');
+});
+
+it('hides the recent files sections for a sonarr card when the history endpoint fails', function () {
+    Http::fake([
+        '*/api/v3/series' => Http::response([['id' => 1, 'title' => 'Show One']], 200),
+        '*/api/v3/wanted/missing*' => Http::response(['totalRecords' => 0], 200),
+        '*/api/v3/queue*' => Http::response(['totalRecords' => 0], 200),
+        '*/api/v3/history*' => Http::response(null, 500),
+    ]);
+
+    $card = Card::factory()->create(['type' => CardType::Api]);
+    CardApi::factory()->create([
+        'card_id' => $card->id,
+        'provider' => ApiProvider::Sonarr,
+        'base_url' => 'http://sonarr.lan',
+    ]);
+
+    Livewire::test('card-api-widget', ['card' => $card])
+        ->assertSee('Series')
+        ->assertDontSee('Recently downloaded')
+        ->assertDontSee('Recently deleted');
+});
+
 it('shows movie, missing, and queue counts for a radarr card', function () {
     Http::fake([
         '*/api/v3/movie' => Http::response([
@@ -145,6 +200,59 @@ it('shows movie, missing, and queue counts for a radarr card', function () {
         ->assertSee('1')
         ->assertSee('Queue')
         ->assertSee('2');
+});
+
+it('shows the 5 most recent downloaded and deleted files with timestamps for a radarr card', function () {
+    Http::fake([
+        '*/api/v3/movie' => Http::response([['id' => 1, 'monitored' => true, 'hasFile' => true]], 200),
+        '*/api/v3/queue*' => Http::response(['totalRecords' => 0], 200),
+        '*eventType=3*' => Http::response([
+            'records' => [
+                ['sourceTitle' => 'Movie.One.2024.1080p.WEB-DL', 'date' => now()->subHour()->toIso8601String()],
+            ],
+        ], 200),
+        '*eventType=6*' => Http::response([
+            'records' => [
+                ['sourceTitle' => 'Movie Two (2023)/Movie.Two.2023.720p.HDTV.mkv', 'date' => now()->subDay()->toIso8601String()],
+            ],
+        ], 200),
+    ]);
+
+    $card = Card::factory()->create(['type' => CardType::Api]);
+    CardApi::factory()->create([
+        'card_id' => $card->id,
+        'provider' => ApiProvider::Radarr,
+        'base_url' => 'http://radarr.lan',
+    ]);
+
+    Livewire::test('card-api-widget', ['card' => $card])
+        ->assertSee('Recently downloaded')
+        ->assertSee('Movie.One.2024.1080p.WEB-DL')
+        ->assertSee('1 hour ago')
+        ->assertSee('Recently deleted')
+        ->assertSee('Movie.Two.2023.720p.HDTV.mkv')
+        ->assertDontSee('Movie Two (2023)/Movie.Two.2023.720p.HDTV.mkv')
+        ->assertSee('1 day ago');
+});
+
+it('hides the recent files sections for a radarr card when the history endpoint fails', function () {
+    Http::fake([
+        '*/api/v3/movie' => Http::response([['id' => 1, 'monitored' => true, 'hasFile' => true]], 200),
+        '*/api/v3/queue*' => Http::response(['totalRecords' => 0], 200),
+        '*/api/v3/history*' => Http::response(null, 500),
+    ]);
+
+    $card = Card::factory()->create(['type' => CardType::Api]);
+    CardApi::factory()->create([
+        'card_id' => $card->id,
+        'provider' => ApiProvider::Radarr,
+        'base_url' => 'http://radarr.lan',
+    ]);
+
+    Livewire::test('card-api-widget', ['card' => $card])
+        ->assertSee('Movies')
+        ->assertDontSee('Recently downloaded')
+        ->assertDontSee('Recently deleted');
 });
 
 it('shows enabled indexer count, grabs, and failures for a prowlarr card', function () {
@@ -234,4 +342,94 @@ it('shows download speed and status for an nzbget card authenticated with basic 
     Http::assertSent(function ($request) {
         return $request->hasHeader('Authorization', 'Basic '.base64_encode('nzbget:tegbzn6789'));
     });
+});
+
+it('shows the name of the file currently downloading for an nzbget card', function () {
+    Http::fake(function ($request) {
+        return match ($request->data()['method'] ?? null) {
+            'status' => Http::response([
+                'result' => [
+                    'DownloadPaused' => false,
+                    'DownloadRate' => 2 * 1024 * 1024,
+                    'RemainingSizeMB' => 2048,
+                ],
+            ], 200),
+            'listgroups' => Http::response([
+                'result' => [
+                    ['NZBName' => 'Some.Release.Name-GROUP', 'Status' => 'PAUSED'],
+                    ['NZBName' => 'Currently.Downloading.This-GROUP', 'Status' => 'DOWNLOADING'],
+                ],
+            ], 200),
+            default => Http::response(null, 404),
+        };
+    });
+
+    $card = Card::factory()->create(['type' => CardType::Api]);
+    CardApi::factory()->create([
+        'card_id' => $card->id,
+        'provider' => ApiProvider::Nzbget,
+        'base_url' => 'http://nzbget.lan:6789',
+    ]);
+
+    Livewire::test('card-api-widget', ['card' => $card])
+        ->assertSee('Currently.Downloading.This-GROUP')
+        ->assertDontSee('Some.Release.Name-GROUP');
+});
+
+it('shows no current file for an nzbget card when nothing is actively downloading', function () {
+    Http::fake(function ($request) {
+        return match ($request->data()['method'] ?? null) {
+            'status' => Http::response([
+                'result' => [
+                    'DownloadPaused' => true,
+                    'DownloadRate' => 0,
+                    'RemainingSizeMB' => 2048,
+                ],
+            ], 200),
+            'listgroups' => Http::response([
+                'result' => [
+                    ['NZBName' => 'Some.Release.Name-GROUP', 'Status' => 'PAUSED'],
+                ],
+            ], 200),
+            default => Http::response(null, 404),
+        };
+    });
+
+    $card = Card::factory()->create(['type' => CardType::Api]);
+    CardApi::factory()->create([
+        'card_id' => $card->id,
+        'provider' => ApiProvider::Nzbget,
+        'base_url' => 'http://nzbget.lan:6789',
+    ]);
+
+    Livewire::test('card-api-widget', ['card' => $card])
+        ->assertSee('Paused')
+        ->assertDontSee('Some.Release.Name-GROUP');
+});
+
+it('does not crash an nzbget card when the listgroups call fails', function () {
+    Http::fake(function ($request) {
+        return match ($request->data()['method'] ?? null) {
+            'status' => Http::response([
+                'result' => [
+                    'DownloadPaused' => false,
+                    'DownloadRate' => 2 * 1024 * 1024,
+                    'RemainingSizeMB' => 2048,
+                ],
+            ], 200),
+            'listgroups' => Http::response(null, 500),
+            default => Http::response(null, 404),
+        };
+    });
+
+    $card = Card::factory()->create(['type' => CardType::Api]);
+    CardApi::factory()->create([
+        'card_id' => $card->id,
+        'provider' => ApiProvider::Nzbget,
+        'base_url' => 'http://nzbget.lan:6789',
+    ]);
+
+    Livewire::test('card-api-widget', ['card' => $card])
+        ->assertSee('Downloading')
+        ->assertSee('2 MB/s');
 });

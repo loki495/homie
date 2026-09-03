@@ -31,6 +31,8 @@ class NzbgetFetcher implements ProviderFetcher
             $rateMBs = round(($result['DownloadRate'] ?? 0) / 1024 / 1024, 1);
             $remainingGB = round(($result['RemainingSizeMB'] ?? 0) / 1024, 1);
 
+            $current = $this->currentlyDownloading($api, $base);
+
             return [
                 'status' => 'ok',
                 'summary' => $paused ? 'Paused' : $rateMBs.' MB/s',
@@ -40,6 +42,7 @@ class NzbgetFetcher implements ProviderFetcher
                     ['label' => 'Remaining', 'value' => $remainingGB.' GB'],
                 ],
                 'raw' => null,
+                ...($current !== null ? ['current' => $current] : []),
             ];
         } catch (\Throwable) {
             return [
@@ -49,5 +52,38 @@ class NzbgetFetcher implements ProviderFetcher
                 'raw' => null,
             ];
         }
+    }
+
+    private function currentlyDownloading(CardApi $api, string $base): ?string
+    {
+        try {
+            $response = ApiHttpClient::for($api)->post($base.'/jsonrpc', ['method' => 'listgroups', 'params' => [0]]);
+        } catch (\Throwable) {
+            return null;
+        }
+
+        if (! $response->successful()) {
+            return null;
+        }
+
+        $groups = $response->json('result') ?? [];
+
+        if (! is_array($groups)) {
+            return null;
+        }
+
+        foreach ($groups as $group) {
+            if (! is_array($group)) {
+                continue;
+            }
+
+            if (($group['Status'] ?? null) === 'DOWNLOADING') {
+                $name = $group['NZBName'] ?? null;
+
+                return is_string($name) ? $name : null;
+            }
+        }
+
+        return null;
     }
 }

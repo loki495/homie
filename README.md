@@ -1,5 +1,7 @@
 # Homie
 
+[![CI](https://github.com/loki495/homie/actions/workflows/ci.yml/badge.svg)](https://github.com/loki495/homie/actions/workflows/ci.yml)
+
 A self-hosted, configurable homepage/dashboard for home lab services — cards for each
 service or module, grouped and reorderable, with live output widgets (CPU/mem/disk,
 custom commands) and optional API integrations for common self-hosted apps (the *arr
@@ -116,11 +118,20 @@ Run from the host — these wrap `docker exec` into the `homie-app` container:
 
 ```bash
 composer pest         # run the test suite (Pest)
+composer pest:browser # real-browser smoke tests (Pest + Playwright, separate image)
 composer pint         # code style (auto-fix)
 composer phpstan      # static analysis (level 6)
 composer rector       # modernization suggestions (dry-run only)
 composer rector:apply # apply rector changes (review the diff first)
 ```
+
+`pest:browser` runs in its own `app-test` Docker service (`docker compose --profile
+test ...`) rather than in `homie-app` — it needs Node.js and a Chromium binary that
+have no business being baked into the same image that also serves production over the
+tunnel. It builds on first run (~1–2 minutes, mostly downloading Chromium); after that
+it's fast. GitHub Actions runs all three suites — Pest, the frontend build, and the
+browser suite — on every push to `main` and every pull request; see
+`.github/workflows/ci.yml`.
 
 ### Ownership note
 

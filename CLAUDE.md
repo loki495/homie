@@ -527,16 +527,36 @@ reporting):
   that's unavoidable once `pestphp/pest-plugin-browser` is a dependency at all.
   SQLite DB is created fresh (`touch` + `migrate --force`) — no production data
   ever touches CI, consistent with SQLite being gitignored.
-- **frontend**: `npm ci && npm run build` — no Feature/Unit test visits a route that
-  renders `@vite` (`HomeTest.php` explicitly disables it), so this job exists purely
-  to catch a broken Vite/Tailwind build before merge.
+- **frontend**: also runs `composer install` before `npm ci && npm run build` —
+  `resources/css/app.css` directly `@import`s `vendor/livewire/flux/dist/flux.css`,
+  so the build fails outright without `vendor/` present, not just missing styles.
+  No Feature/Unit test visits a route that renders `@vite` (`HomeTest.php`
+  explicitly disables it), so this job exists purely to catch a broken
+  Vite/Tailwind build before merge.
 - **browser**: builds the `app-test` image (`docker compose --profile test build`)
-  and runs `tests/Browser` inside it, installing Composer/npm deps and migrating a
-  fresh SQLite DB the same way the `php` job does, but through `docker compose
-  --profile test run` instead of running directly on the runner — see "Browser
-  testing" above for why this can't just reuse the `php` job's environment.
+  and runs `tests/Browser` inside it, installing Composer/npm deps, **building
+  assets** (unlike Feature/Unit tests, `tests/Browser` tests don't call
+  `withoutVite()` — see "Browser testing" above — so this step is required, not
+  optional), and migrating a fresh SQLite DB, all through `docker compose
+  --profile test run` instead of running directly on the runner.
 
 Composer/npm dependencies in the `php` and `frontend` jobs are cached by lockfile
 hash; the `browser` job's Docker layer cache is not currently persisted across runs
 (each run rebuilds the `app-test` image from scratch, ~1-2 minutes) — worth revisiting
 with GitHub Actions' Docker Buildx cache if that cost becomes annoying.
+
+**`composer.json`'s `config.platform.php` is pinned to `8.3.0` — do not remove it.**
+The dev container (`homie-app`) runs PHP 8.5, but the declared floor is `^8.3`
+(CI's `php`/`frontend` jobs run on 8.3 specifically, to prove that floor is real).
+Without this pin, running `composer update`/`require` inside `homie-app` lets
+composer's solver resolve packages against the *actual* running 8.5 interpreter —
+which is how this repo ended up with `symfony/console` (and a dozen other symfony/*
+packages) locked to a v8.1.x line requiring PHP ≥8.4.1, silently breaking `composer
+install` on the declared 8.3 floor with no local symptom at all (homie-app's 8.5
+happily satisfied it). Found the hard way: CI's first real run failed on `composer
+install` with a wall of "your php version (8.3.33) does not satisfy that
+requirement" errors, from a lock file that had been broken this way since before
+this session even started. Fixed by pinning the platform and running `composer
+update` once to relock against genuinely-8.3-compatible versions (symfony/* moved
+to their 7.4.x line) — re-pin and re-lock the same way if this ever resurfaces
+after a future `composer update`.

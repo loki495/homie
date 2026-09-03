@@ -68,13 +68,29 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.3"
+          coverage: none
+
+      - name: Cache Composer dependencies
+        uses: actions/cache@v4
+        with:
+          path: vendor
+          key: composer-${{ runner.os }}-${{ hashFiles('composer.lock') }}
+          restore-keys: composer-${{ runner.os }}-
+
+      - name: Install Composer dependencies
+        run: composer install --no-interaction --prefer-dist --no-progress
+
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: npm
 
-      - name: Install dependencies
+      - name: Install npm dependencies
         run: npm ci
 
       - name: Build assets
@@ -97,6 +113,9 @@ jobs:
 
       - name: Install npm dependencies
         run: docker compose --profile test run --rm app-test npm install
+
+      - name: Build assets
+        run: docker compose --profile test run --rm app-test npm run build
 
       - name: Generate app key
         run: docker compose --profile test run --rm app-test php artisan key:generate

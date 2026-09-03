@@ -289,6 +289,24 @@ it('shows enabled indexer count, grabs, and failures for a prowlarr card', funct
     Http::assertSent(fn ($request) => $request->hasHeader('X-Api-Key', 'secret'));
 });
 
+it('shows a friendly error instead of a 500 when prowlarr is unreachable', function () {
+    Http::fake([
+        '*/api/v1/indexer' => fn () => throw new ConnectionException('Could not connect'),
+    ]);
+
+    $card = Card::factory()->create(['type' => CardType::Api]);
+    CardApi::factory()->create([
+        'card_id' => $card->id,
+        'provider' => ApiProvider::Prowlarr,
+        'base_url' => 'http://prowlarr.lan',
+        'api_key' => 'secret',
+    ]);
+
+    Livewire::test('card-api-widget', ['card' => $card])
+        ->assertSee('Could not reach http://prowlarr.lan')
+        ->assertSeeHtml('bg-rose-500');
+});
+
 it('shows missing subtitle counts for a bazarr card authenticated via query string', function () {
     Http::fake([
         '*/api/movies/wanted*' => Http::response(['total' => 5], 200),
@@ -310,6 +328,43 @@ it('shows missing subtitle counts for a bazarr card authenticated via query stri
         ->assertSee('12');
 
     Http::assertSent(fn ($request) => str_contains((string) $request->url(), 'apikey=secret'));
+});
+
+it('shows a friendly error instead of a 500 when bazarr responds with a failure status', function () {
+    Http::fake([
+        '*/api/movies/wanted*' => Http::response(null, 503),
+        '*/api/episodes/wanted*' => Http::response(['total' => 12], 200),
+    ]);
+
+    $card = Card::factory()->create(['type' => CardType::Api]);
+    CardApi::factory()->create([
+        'card_id' => $card->id,
+        'provider' => ApiProvider::Bazarr,
+        'base_url' => 'http://bazarr.lan',
+        'api_key' => 'secret',
+    ]);
+
+    Livewire::test('card-api-widget', ['card' => $card])
+        ->assertSee('Could not reach Bazarr')
+        ->assertSeeHtml('bg-rose-500');
+});
+
+it('shows a friendly error instead of a 500 when bazarr is unreachable', function () {
+    Http::fake([
+        '*/api/movies/wanted*' => fn () => throw new ConnectionException('Could not connect'),
+    ]);
+
+    $card = Card::factory()->create(['type' => CardType::Api]);
+    CardApi::factory()->create([
+        'card_id' => $card->id,
+        'provider' => ApiProvider::Bazarr,
+        'base_url' => 'http://bazarr.lan',
+        'api_key' => 'secret',
+    ]);
+
+    Livewire::test('card-api-widget', ['card' => $card])
+        ->assertSee('Could not reach http://bazarr.lan')
+        ->assertSeeHtml('bg-rose-500');
 });
 
 it('shows download speed and status for an nzbget card authenticated with basic auth', function () {

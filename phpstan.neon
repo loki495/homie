@@ -47,6 +47,19 @@ parameters:
                 - property.notFound
                 - argument.templateType
             path: tests/*
+        -
+            # Pest binds it()/test() closures' $this to Tests\TestCase at runtime,
+            # granting protected access the same as a real method body would get —
+            # PHPStan can't see that a global closure's scope was rebound, so it
+            # still checks visibility as if the call came from outside the class.
+            message: '#Call to protected method withoutVite\(\)#'
+            path: tests/*
+        -
+            # assertSeeLivewire() is a macro Livewire registers on
+            # Illuminate\Testing\TestResponse at runtime — PHPStan has no visibility
+            # into macros added outside a stub/ide-helper file.
+            message: '#Call to an undefined method Illuminate\\Testing\\TestResponse::assertSeeLivewire\(\)#'
+            path: tests/*
 
     scanFiles:
         - vendor/laravel/framework/src/Illuminate/Foundation/helpers.php

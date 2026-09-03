@@ -14,6 +14,14 @@ new class extends Component
     /** @var list<array{label: string, value: string}> */
     public array $stats = [];
 
+    /** @var list<array{name: string, at: string}> */
+    public array $downloaded = [];
+
+    /** @var list<array{name: string, at: string}> */
+    public array $deleted = [];
+
+    public ?string $current = null;
+
     public function mount(): void
     {
         $api = $this->card->api()->first();
@@ -27,6 +35,9 @@ new class extends Component
         $this->status = $result['status'];
         $this->summary = $result['summary'];
         $this->stats = $result['stats'];
+        $this->downloaded = $result['downloaded'] ?? [];
+        $this->deleted = $result['deleted'] ?? [];
+        $this->current = $result['current'] ?? null;
 
         $api->update([
             'cached_data' => $result['status'] === 'ok' ? $result['raw'] : null,
@@ -65,5 +76,50 @@ new class extends Component
         </div>
     @else
         <p class="mt-1 text-xs text-slate-400 dark:text-slate-500">{{ $summary }}</p>
+    @endif
+
+    @if (count($downloaded) || count($deleted))
+        <div class="mt-2 space-y-1">
+            @if (count($downloaded))
+                <details class="group">
+                    <summary
+                        onclick="event.stopPropagation()"
+                        class="cursor-pointer text-xs font-medium text-slate-500 select-none dark:text-slate-400"
+                    >
+                        Recently downloaded
+                    </summary>
+                    <ul class="mt-1 space-y-0.5 border-l border-slate-200 pl-2 dark:border-slate-700">
+                        @foreach ($downloaded as $item)
+                            <li class="flex items-baseline justify-between gap-2 text-xs text-slate-500 dark:text-slate-400">
+                                <span class="min-w-0 truncate" title="{{ $item['name'] }}">{{ $item['name'] }}</span>
+                                <span class="shrink-0 text-slate-400 dark:text-slate-500">{{ $item['at'] }}</span>
+                            </li>
+                        @endforeach
+                    </ul>
+                </details>
+            @endif
+            @if (count($deleted))
+                <details class="group">
+                    <summary
+                        onclick="event.stopPropagation()"
+                        class="cursor-pointer text-xs font-medium text-slate-500 select-none dark:text-slate-400"
+                    >
+                        Recently deleted
+                    </summary>
+                    <ul class="mt-1 space-y-0.5 border-l border-slate-200 pl-2 dark:border-slate-700">
+                        @foreach ($deleted as $item)
+                            <li class="flex items-baseline justify-between gap-2 text-xs text-slate-500 dark:text-slate-400">
+                                <span class="min-w-0 truncate" title="{{ $item['name'] }}">{{ $item['name'] }}</span>
+                                <span class="shrink-0 text-slate-400 dark:text-slate-500">{{ $item['at'] }}</span>
+                            </li>
+                        @endforeach
+                    </ul>
+                </details>
+            @endif
+        </div>
+    @endif
+
+    @if ($current)
+        <p class="mt-1 truncate text-xs text-slate-400 dark:text-slate-500" title="{{ $current }}">{{ $current }}</p>
     @endif
 </div>

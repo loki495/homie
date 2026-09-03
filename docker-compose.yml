@@ -1,5 +1,16 @@
 name: homie
 
+x-app-dockerfile: &app-dockerfile |
+  FROM composer:latest AS composer
+  FROM php:8.5-apache AS base
+  COPY --from=composer /usr/bin/composer /usr/local/bin/composer
+  COPY docker/setup-dev-container.sh /tmp/setup.sh
+  RUN chmod +x /tmp/setup.sh && /usr/bin/bash /tmp/setup.sh
+
+  FROM base AS test
+  COPY docker/setup-test-container.sh /tmp/setup-test.sh
+  RUN chmod +x /tmp/setup-test.sh && /usr/bin/bash /tmp/setup-test.sh
+
 services:
   app:
     container_name: homie-app
@@ -13,12 +24,27 @@ services:
       - "traefik.http.services.homie.loadbalancer.server.port=80"
     build:
       context: .
-      dockerfile_inline: |
-        FROM composer:latest AS composer
-        FROM php:8.5-apache
-        COPY --from=composer /usr/bin/composer /usr/local/bin/composer
-        COPY docker/setup-dev-container.sh /tmp/setup.sh
-        RUN chmod +x /tmp/setup.sh && /usr/bin/bash /tmp/setup.sh
+      target: base
+      dockerfile_inline: *app-dockerfile
+    networks:
+      - web
+
+  # Browser (Pest + Playwright) tests only — never started by a plain `docker compose
+  # up`. Adds Node.js + Chromium on top of the same `base` image `app` uses, kept out
+  # of `app` itself since that image also serves production over the tunnel (see
+  # CLAUDE.md) and shouldn't carry a JS runtime + browser binary just for dev-time
+  # tests. Run with: docker compose --profile test run --rm app-test ./vendor/bin/pest tests/Browser
+  app-test:
+    container_name: homie-app-test
+    profiles: ["test"]
+    volumes:
+      - ./:/var/www/html
+      - ./docker/logs:/var/www/html/logs:rw
+      - ./storage/ssh:/var/www/html/storage/ssh:rw
+    build:
+      context: .
+      target: test
+      dockerfile_inline: *app-dockerfile
     networks:
       - web
 

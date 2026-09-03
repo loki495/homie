@@ -74,8 +74,16 @@ echo 'Acquire::Check-Valid-Until "false";' > /etc/apt/apt.conf.d/99no-check-vali
 docker-php-ext-configure gd --with-jpeg --with-freetype --with-webp
 
 # Install PHP extensions
-docker-php-ext-install gd pdo_sqlite zip
-docker-php-ext-enable gd pdo_sqlite zip
+# sockets: required merely by *having* pestphp/pest-plugin-browser in composer.json,
+# even on a machine that never runs a browser test — the plugin's Plugin::boot()
+# registers a global afterEach hook (see docker/setup-test-container.sh) that
+# eagerly allocates a port via socket_create_listen() after every single Pest
+# test, everywhere. Without this extension here, the entire suite errors out with
+# "Call to undefined function ...socket_create_listen()" the moment the package
+# is required, since vendor/ (and therefore this behavior) is shared with app-test
+# via the same bind-mounted project directory.
+docker-php-ext-install gd pdo_sqlite zip sockets
+docker-php-ext-enable gd pdo_sqlite zip sockets
 
 # Enable Apache modules
 a2enmod rewrite

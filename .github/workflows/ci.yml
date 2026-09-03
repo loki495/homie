@@ -20,7 +20,12 @@ jobs:
         uses: shivammathur/setup-php@v2
         with:
           php-version: "8.3"
-          extensions: mbstring, dom, fileinfo, sqlite3, pdo_sqlite
+          # sockets: merely *requiring* pestphp/pest-plugin-browser (a dev
+          # dependency, for tests/Browser) makes every Pest test — not just
+          # browser ones — eagerly allocate a port via socket_create_listen() in
+          # a global afterEach hook. Without this extension the whole suite
+          # errors out here too, exactly as it did for homie-app locally.
+          extensions: mbstring, dom, fileinfo, sqlite3, pdo_sqlite, sockets
           coverage: none
 
       - name: Copy .env
@@ -74,3 +79,33 @@ jobs:
 
       - name: Build assets
         run: npm run build
+
+  browser:
+    name: Browser tests (Pest + Playwright)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Copy .env
+        run: cp .env.example .env
+
+      - name: Build the browser-test image
+        run: docker compose --profile test build app-test
+
+      - name: Install Composer dependencies
+        run: docker compose --profile test run --rm app-test composer install --no-interaction --prefer-dist --no-progress
+
+      - name: Install npm dependencies
+        run: docker compose --profile test run --rm app-test npm install
+
+      - name: Generate app key
+        run: docker compose --profile test run --rm app-test php artisan key:generate
+
+      - name: Create SQLite database
+        run: touch database/database.sqlite
+
+      - name: Run migrations
+        run: docker compose --profile test run --rm app-test php artisan migrate --force
+
+      - name: Pest (browser)
+        run: docker compose --profile test run --rm app-test ./vendor/bin/pest tests/Browser

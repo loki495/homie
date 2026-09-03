@@ -34,6 +34,12 @@ services:
   # of `app` itself since that image also serves production over the tunnel (see
   # CLAUDE.md) and shouldn't carry a JS runtime + browser binary just for dev-time
   # tests. Run with: docker compose --profile test run --rm app-test ./vendor/bin/pest tests/Browser
+  # No `networks: [web]` here, deliberately — unlike app/vite it never needs Traefik
+  # routing or to reach another service; Playwright drives a headless browser against
+  # the Laravel app booted in-process in this same container (see CLAUDE.md's
+  # "Browser testing" section). Attaching to `web` (external, Traefik-managed, only
+  # exists on Andres's machine) broke this job outright in CI with "network web
+  # declared as external, but could not be found" the first time it ran there.
   app-test:
     container_name: homie-app-test
     profiles: ["test"]
@@ -45,8 +51,6 @@ services:
       context: .
       target: test
       dockerfile_inline: *app-dockerfile
-    networks:
-      - web
 
   vite:
     image: node:20

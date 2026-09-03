@@ -61,11 +61,13 @@ encrypted at rest the same way `api_key` already was.
 `ApiProvider::fetcher()` maps every enum case to an `App\Support\ApiProviders\*Fetcher`
 (implementing `ProviderFetcher`) — every provider in the enum has one, non-nullable, by
 design (see "Adding a new provider" below). Each fetcher does its own HTTP calls and
-returns `{status, summary, stats[], raw}` — `stats` is a small list of label/value pairs
-rendered as chips on the card-api-widget instead of the generic "HTTP 200" line.
-Endpoint shapes were verified against the gethomepage/homepage widget source (a mature
-OSS project with working integrations for all of these) plus live calls against
-Andres's own instances — not guessed. Notable per-provider quirks:
+returns `{status, summary, stats[], raw}` plus three optional keys (`downloaded[]`,
+`deleted[]`, `current`) that a fetcher only includes when it has that kind of data —
+`stats` is a small list of label/value pairs rendered as chips on the card-api-widget
+instead of the generic "HTTP 200" line. Endpoint shapes were verified against the
+gethomepage/homepage widget source (a mature OSS project with working integrations for
+all of these) plus live calls against Andres's own instances — not guessed. Notable
+per-provider quirks:
 - Sonarr: `/api/v3/series` (count), `/api/v3/queue` and `/api/v3/wanted/missing` both
   paginated with a `totalRecords` field — request `pageSize=1` to avoid pulling the
   full list just for the count.
@@ -90,6 +92,40 @@ Adding a new provider: add the enum case, a Fetcher implementing `ProviderFetche
 one `match` arm in `ApiProvider::fetcher()`, all in the same change — the widget needs
 no changes. Every case must resolve to a real fetcher (the return type is
 non-nullable); don't add an enum case before its fetcher exists.
+
+## Sonarr/Radarr recent activity, and NZBGet's current download
+
+`SonarrFetcher`/`RadarrFetcher` each add two extra calls to `/api/v3/history` (page 1,
+pageSize 5, sorted by date descending), filtered server-side via the numeric `eventType`
+query param — Sonarr's `EpisodeHistoryEventType` and Radarr's `MovieHistoryEventType`
+enums assign different integers to the same concepts (downloadFolderImported = 3 in
+both, but deleted is `episodeFileDeleted = 5` for Sonarr vs `movieFileDeleted = 6` for
+Radarr — confirmed against each project's C# source, not guessed), so the two fetchers
+each hardcode their own pair of constants rather than sharing one. Each history record's
+`sourceTitle` is used as the display name and `date` is formatted with
+`Carbon::parse()->diffForHumans()`. For deleted entries specifically, `sourceTitle` is
+the file's relative path rather than a release name (unlike grabbed/imported entries),
+so `history()` takes a `basenameOnly` flag — only the deleted call passes it — and runs
+the name through `basename()`; harmless no-op on a slash-free release name, so the same
+helper serves both lists without a second code path. card-api-widget renders these as two native
+`<details>`/`<summary>` collapsible lists ("Recently downloaded"/"Recently deleted") so
+they don't dominate the card. Since Api-type cards are wrapped in a whole-card `<a
+href>` (see below), the `<summary>` has an inline `onclick="event.stopPropagation()"` —
+without it, toggling the list also fires the link navigation. Each list item's name gets
+`min-w-0` alongside Tailwind's `truncate` (a plain flex item won't actually shrink/ellide
+without `min-w-0`) plus a `title` attribute with the full string, so a long release name
+truncates visually but is still readable on hover.
+
+NZBGet's `current` (the file actively downloading) comes from a second JSON-RPC call,
+`listgroups` with `params: [0]` — the queue entry whose `Status === 'DOWNLOADING'`
+(NZBGet computes this server-side; a group can also be `PAUSED`/`QUEUED`/postprocessing
+states), read from its `NZBName` field. Confirmed against NZBGet's own C++ source
+(`daemon/remote/XmlRpc.cpp`), since homepage's widget doesn't cover this endpoint.
+
+All three of these extra calls are individually try/caught and default to
+empty/null on any failure (timeout, non-2xx, unexpected shape) — deliberately *not*
+sharing the fetcher's outer try/catch, so a hiccup on the history/listgroups call alone
+never flips the whole card into its error state when the main stats call succeeded fine.
 
 ## Discovery: host-network containers need an inspect fallback
 
@@ -322,7 +358,10 @@ the UI/database — not one pre-wired to Andres's home lab.
 - App container: `homie-app` (PHP 8.5-apache). Vite container: `homie-vite`. Both have
   `restart: unless-stopped` and the vite service has a healthcheck (polls
   `/@vite/client`) so a crashed dev server is visible in `docker ps`/restarted
-  automatically instead of silently leaving HMR dead.
+  automatically instead of silently leaving HMR dead. A third service, `app-test`
+  (`profiles: ["test"]`, never started by a plain `docker compose up`), exists solely
+  to run browser tests — see "Browser testing" under Testing below for why it's a
+  separate image rather than something added to `homie-app` itself.
 - Run PHP tooling via `docker exec -u www-data homie-app ...` — use `-u www-data`
   (not root) so files stay owned by UID 1000, matching the host user on the bind mount.
   Composer script wrappers (`composer pint`, `phpstan`, `rector`, `pest`) already do this.
@@ -388,3 +427,116 @@ exposed differently.
 Single-branch: `main`. This project intentionally opts out of the global master/local
 branch model (see `~/.claude/CLAUDE.md`) — there's no separate production deployment to
 mirror, so work happens directly on `main`. Repo: `loki495/homie` on GitHub (public).
+
+## Testing
+
+169 Pest tests (Feature + Unit) as of this writing, covering happy *and* sad paths for
+essentially every Livewire component and support class — cards, groups, machines,
+discovery (Docker API + SSH, including the host-network/Traefik-label edge cases),
+backup import/export, icon search, CSRF/middleware, and every `ApiProvider` fetcher
+including its failure modes (unreachable, non-2xx, malformed history). When auditing
+for coverage gaps, check what's actually there first — this suite is not a blank slate.
+
+A few testing patterns worth knowing:
+- **`tests/Feature/HomeTest.php`** calls `$this->withoutVite()` before hitting `/`,
+  since `home.blade.php` is the only view that renders `@vite` and no built
+  `public/build/manifest.json` exists in a fresh CI checkout — `withoutVite()` swaps
+  in a no-op Vite facade for that request instead.
+- **Pest's `it()`/`test()` closures bind `$this` to `Tests\TestCase` at runtime**
+  (`Closure::bindTo`), which grants protected-method access the same as a real method
+  body would get — but PHPStan can't see that a global closure's scope was rebound, so
+  it still flags `$this->withoutVite()` as an out-of-scope protected call, and
+  `assertSeeLivewire()` (a macro Livewire registers on `TestResponse` at runtime) as an
+  undefined method. Both are ignored in `phpstan.neon`, scoped to `tests/*` by exact
+  message match — the same class of gap as the enum-casts entry above (PHPStan blind
+  to something real but dynamically resolved), not a real bug.
+- **`ApiProvider::fetcher()` has a dedicated `tests/Unit/Enums/ApiProviderTest.php`**
+  that runs a dataset over every enum case, asserting each resolves to a real
+  `ProviderFetcher` — a regression test for the "every case must resolve, non-nullable
+  by design" invariant documented above, so a new enum case added without its fetcher
+  fails immediately instead of surfacing as a runtime crash on that one card.
+
+### Browser testing (Pest + Playwright) — deliberately isolated from `homie-app`
+
+`tests/Browser/` holds real-browser smoke tests (`pestphp/pest-plugin-browser` +
+Playwright/Chromium), run via `composer pest:browser`. This does **not** run inside
+the regular `homie-app` container — that image also serves production over the
+tunnel (see "Container / infra" above), and browser testing needs a full Node.js
+runtime plus a ~300MB Chromium binary that have no business shipping in a production
+PHP-apache image. Instead, `docker-compose.yml` defines a second service, `app-test`
+(`profiles: ["test"]`, so a plain `docker compose up` never starts it), built from a
+`test` stage layered on top of the same `base` stage `app` uses — a YAML anchor
+(`&app-dockerfile`) keeps the inline multi-stage Dockerfile defined once and shared
+between both services rather than duplicated. `docker/setup-test-container.sh` (the
+`test` stage's own setup script, parallel to `setup-dev-container.sh`) installs
+Node.js and bakes the Chromium binary + its OS-level deps into the image at build
+time via a throwaway `npx playwright@<version> install --with-deps chromium` —
+pinned to the exact version in `package.json`/`package-lock.json`, since Pest's
+plugin refuses to run against a mismatched Playwright version. The browser binary
+lands under `/root/.cache/ms-playwright`, outside the bind-mounted `/var/www/html`,
+so it survives even though the project directory itself gets shadowed by the volume
+mount at container start; the `playwright` npm package itself, however, **must**
+live in the project's own `node_modules` (Pest's `ServerManager` shells out to
+`node_modules/.bin/playwright` by a hardcoded relative path), so it's a real
+`package.json` devDependency, not something installed only inside the image.
+
+**Merely requiring `pestphp/pest-plugin-browser` breaks the entire Pest suite
+everywhere it's installed, not just browser tests.** Its `Plugin::boot()`
+unconditionally registers a global `afterEach` hook (scoped to the whole test root,
+not `tests/Browser`) that eagerly constructs a `ServerManager` singleton — which
+calls `socket_create_listen()` for port allocation — after *every single test*,
+regardless of whether that test ever calls `visit()`. Since `vendor/` is shared via
+the bind mount between `homie-app` and `app-test`, this meant the regular 169-test
+suite went from all-green to all-failing (`Call to undefined function
+Pest\Browser\Support\socket_create_listen()`) the moment the package was required,
+until `sockets` was added to `homie-app`'s own PHP extensions too (in
+`setup-dev-container.sh`, not just the test stage) — a deliberate, narrow exception
+to "keep production clean": `ext-sockets` is a small built-in extension with no
+external binaries, unlike Node/Chromium, so this doesn't reintroduce the bloat the
+separate `app-test` stage exists to avoid. The same reasoning applies to CI's `php`
+job, which also needs `sockets` in its `shivammathur/setup-php` extensions list for
+exactly the same reason. `ext-pcntl`, by contrast, stays test-stage-only — it's only
+needed for `PlaywrightNpmServer::stop()`'s signal handling when a Playwright server
+was actually started, which only happens when a test really calls `visit()`.
+
+Browser tests use the same `RefreshDatabase`-backed SQLite test database as
+Feature/Unit tests, not real data — `pestphp/pest-plugin-browser`'s
+`LaravelHttpServer` serves requests by handing them to the *already-booted* Laravel
+kernel from the current test process (same `app()` container, same `.env`/`phpunit.xml`
+config), not by shelling out to `php artisan serve` against the real `.env`. `tests/
+Pest.php`'s `pest()->extend(TestCase::class)->use(RefreshDatabase::class)->in(...)`
+list includes `'Browser'` for this reason. Unlike `HomeTest.php`, browser tests do
+**not** call `withoutVite()` — the point of a real-browser test is to exercise the
+actual built CSS/JS bundle, so `public/build/` must exist (`npm run build`) before
+running `composer pest:browser` locally; CI's `browser` job builds it as part of the
+`composer install`/`npm install` steps inside the `app-test` container.
+
+## CI (GitHub Actions)
+
+`.github/workflows/ci.yml` runs on every push to `main` and every pull request,
+three independent jobs (no `needs:`, so one failing doesn't block the others from
+reporting):
+- **php**: mirrors the local pre-commit hook's order (Pint `--test` → PHPStan →
+  Rector `--dry-run` → Pest), on PHP 8.3 — the floor version declared in
+  `composer.json` (`"php": "^8.3"`), not the 8.5 the dev container happens to run,
+  so CI actually proves the "clone and it works" claim in the distributability
+  principle above rather than only testing Andres's own environment. Uses
+  `shivammathur/setup-php` directly on the runner (no Docker) since GitHub-hosted
+  runners don't need the container indirection local dev uses for host/UID
+  reasons. Its extensions list includes `sockets` — see "Testing" above for why
+  that's unavoidable once `pestphp/pest-plugin-browser` is a dependency at all.
+  SQLite DB is created fresh (`touch` + `migrate --force`) — no production data
+  ever touches CI, consistent with SQLite being gitignored.
+- **frontend**: `npm ci && npm run build` — no Feature/Unit test visits a route that
+  renders `@vite` (`HomeTest.php` explicitly disables it), so this job exists purely
+  to catch a broken Vite/Tailwind build before merge.
+- **browser**: builds the `app-test` image (`docker compose --profile test build`)
+  and runs `tests/Browser` inside it, installing Composer/npm deps and migrating a
+  fresh SQLite DB the same way the `php` job does, but through `docker compose
+  --profile test run` instead of running directly on the runner — see "Browser
+  testing" above for why this can't just reuse the `php` job's environment.
+
+Composer/npm dependencies in the `php` and `frontend` jobs are cached by lockfile
+hash; the `browser` job's Docker layer cache is not currently persisted across runs
+(each run rebuilds the `app-test` image from scratch, ~1-2 minutes) — worth revisiting
+with GitHub Actions' Docker Buildx cache if that cost becomes annoying.

@@ -15,6 +15,13 @@ services:
   app:
     container_name: homie-app
     restart: unless-stopped
+    # Published so a fresh clone can reach the app with zero external setup — the
+    # actual production/LAN routing (Traefik host rules, DNS) lives outside this
+    # repo, in Andres's own reverse-proxy config, not something a clone gets for
+    # free. Override the host port with APP_PORT in .env if 8090 collides with
+    # something else already running.
+    ports:
+      - "${APP_PORT:-8090}:80"
     volumes:
       - ./:/var/www/html
       - ./docker/logs:/var/www/html/logs:rw

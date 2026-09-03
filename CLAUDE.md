@@ -1,8 +1,10 @@
 # Homie — project context
 
 Self-hosted home lab dashboard. Laravel 13 + Livewire 4 (SFC) + Alpine.js + Tailwind v4 +
-Flux UI (free tier). SQLite. Dockerized dev environment behind Traefik
-(`homie.dev.local.test`).
+Flux UI (free tier). SQLite. Dockerized dev environment; reachable via a published
+port (`APP_PORT`, default 8090) out of the box, or via Andres's own Traefik +
+ac495.net routing (external to this repo, not shipped or assumed) when working on
+his machine specifically.
 
 ## UI components
 
@@ -362,6 +364,15 @@ the UI/database — not one pre-wired to Andres's home lab.
   (`profiles: ["test"]`, never started by a plain `docker compose up`), exists solely
   to run browser tests — see "Browser testing" under Testing below for why it's a
   separate image rather than something added to `homie-app` itself.
+- `app` publishes `${APP_PORT:-8090}:80` — found missing during a hardcoding audit:
+  the app's Traefik `Host()` router label was removed in an earlier commit (LAN
+  access moved to `ac495.net`, routed from a file outside this repo,
+  `~/www/traefik/dynamic/ac495-sites.yml`), but nothing replaced it, so a fresh
+  clone following this repo's own README had no way to reach the app at all —
+  `vite`'s equivalent label was left behind as stale documentation of the old
+  scheme, not a working path for a new clone either. The published port is the
+  distributable fallback; Traefik/ac495.net remains available on top of it for
+  Andres's own machine specifically, never assumed.
 - Run PHP tooling via `docker exec -u www-data homie-app ...` — use `-u www-data`
   (not root) so files stay owned by UID 1000, matching the host user on the bind mount.
   Composer script wrappers (`composer pint`, `phpstan`, `rector`, `pest`) already do this.

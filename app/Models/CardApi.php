@@ -23,8 +23,6 @@ class CardApi extends Model
         'api_key',
         'username',
         'password',
-        'cached_data',
-        'last_fetched_at',
     ];
 
     #[\Override]
@@ -34,8 +32,6 @@ class CardApi extends Model
             'provider' => ApiProvider::class,
             'api_key' => 'encrypted',
             'password' => 'encrypted',
-            'cached_data' => 'array',
-            'last_fetched_at' => 'datetime',
         ];
     }
 

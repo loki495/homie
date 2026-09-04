@@ -5,7 +5,6 @@ declare(strict_types=1);
 use App\Enums\ApiProvider;
 use App\Models\Card;
 use App\Models\CardApi;
-use Illuminate\Support\Carbon;
 
 it('casts provider to an ApiProvider enum', function () {
     $api = CardApi::factory()->create(['provider' => ApiProvider::Radarr]);
@@ -20,17 +19,6 @@ it('encrypts the password at rest', function () {
 
     $raw = DB::table('card_apis')->where('id', $api->id)->value('password');
     expect($raw)->not->toBe('super-secret');
-});
-
-it('casts cached_data to an array and last_fetched_at to a datetime', function () {
-    $api = CardApi::factory()->create([
-        'cached_data' => ['status' => 'up'],
-        'last_fetched_at' => now(),
-    ]);
-
-    expect($api->fresh())
-        ->cached_data->toBe(['status' => 'up'])
-        ->last_fetched_at->toBeInstanceOf(Carbon::class);
 });
 
 it('belongs to a card', function () {

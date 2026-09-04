@@ -28,8 +28,6 @@ class CardApiFactory extends Factory
             'api_key' => fake()->uuid(),
             'username' => null,
             'password' => null,
-            'cached_data' => null,
-            'last_fetched_at' => null,
         ];
     }
 }

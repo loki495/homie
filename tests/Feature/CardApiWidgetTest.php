@@ -24,10 +24,6 @@ it('fetches and caches data for a generic api card', function () {
 
     Livewire::test('card-api-widget', ['card' => $card])
         ->assertSee('HTTP 200');
-
-    expect($api->fresh())
-        ->cached_data->toBe(['status' => 'up'])
-        ->last_fetched_at->not->toBeNull();
 });
 
 it('shows an error status and summary when the api responds with a failure status', function () {
@@ -45,10 +41,6 @@ it('shows an error status and summary when the api responds with a failure statu
     Livewire::test('card-api-widget', ['card' => $card])
         ->assertSee('HTTP 503')
         ->assertSeeHtml('bg-rose-500');
-
-    expect($api->fresh())
-        ->cached_data->toBeNull()
-        ->last_fetched_at->not->toBeNull();
 });
 
 it('shows a friendly error instead of a 500 when the api is unreachable', function () {

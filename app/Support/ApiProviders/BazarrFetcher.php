@@ -41,10 +41,10 @@ class BazarrFetcher implements ProviderFetcher
                 ],
                 'raw' => null,
             ];
-        } catch (\Throwable) {
+        } catch (\Throwable $exception) {
             return [
                 'status' => 'error',
-                'summary' => 'Could not reach '.$api->base_url,
+                'summary' => ApiHttpClient::errorSummary($exception, $api),
                 'stats' => [],
                 'raw' => null,
             ];

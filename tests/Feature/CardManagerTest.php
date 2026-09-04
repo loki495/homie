@@ -8,6 +8,7 @@ use App\Models\Card;
 use App\Models\CardOutput;
 use App\Models\Group;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Livewire\Livewire;
 
@@ -220,6 +221,35 @@ it('never prefills the api key when editing an api-key-auth card', function () {
         ->assertSet('auth_type', 'api_key')
         ->assertSet('api_key', '')
         ->assertSet('hasApiKey', true);
+});
+
+it('allows replacing credentials that cannot be decrypted when editing an api card', function () {
+    $card = Card::factory()->create(['type' => CardType::Api]);
+    $api = $card->api()->create([
+        'provider' => ApiProvider::Generic,
+        'base_url' => 'http://192.168.1.1',
+        'auth_type' => 'basic',
+        'api_key' => 'encrypted-with-an-old-key',
+        'username' => 'admin',
+        'password' => 'encrypted-with-an-old-key',
+    ]);
+
+    DB::table('card_apis')->where('id', $api->id)->update([
+        'api_key' => 'not-valid-encrypted-data',
+        'password' => 'also-not-valid-encrypted-data',
+    ]);
+
+    $component = Livewire::test('card-manager')
+        ->call('edit', $card->id)
+        ->assertSet('hasApiKey', false)
+        ->assertSet('hasPassword', false);
+
+    $component
+        ->set('password', 'replacement-password')
+        ->call('save')
+        ->assertHasNoErrors();
+
+    expect($card->api()->first()->password)->toBe('replacement-password');
 });
 
 it('keeps the existing password when saving an edit with the password field left blank', function () {

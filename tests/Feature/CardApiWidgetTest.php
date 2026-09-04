@@ -7,6 +7,7 @@ use App\Enums\CardType;
 use App\Models\Card;
 use App\Models\CardApi;
 use Illuminate\Http\Client\ConnectionException;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Livewire\Livewire;
 
@@ -58,6 +59,25 @@ it('shows a friendly error instead of a 500 when the api is unreachable', functi
     Livewire::test('card-api-widget', ['card' => $card])
         ->assertSee('Could not reach https://example.test/api')
         ->assertSeeHtml('bg-rose-500');
+});
+
+it('shows an actionable error instead of crashing when the api key cannot be decrypted', function () {
+    $card = Card::factory()->create(['type' => CardType::Api]);
+    $api = CardApi::factory()->create([
+        'card_id' => $card->id,
+        'provider' => ApiProvider::Generic,
+        'base_url' => 'https://example.test/api',
+        'api_key' => 'encrypted-with-an-old-key',
+    ]);
+
+    DB::table('card_apis')->where('id', $api->id)->update([
+        'api_key' => 'not-valid-encrypted-data',
+    ]);
+
+    Livewire::test('card-api-widget', ['card' => $card])
+        ->assertSet('status', 'error')
+        ->assertSet('summary', 'Saved credentials could not be decrypted. Edit this card and re-enter them.')
+        ->assertSee('Saved credentials could not be decrypted. Edit this card and re-enter them.');
 });
 
 it('authenticates with basic auth when the api uses a username and password', function () {

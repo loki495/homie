@@ -415,8 +415,7 @@ code sets (dry-run only — never auto-apply without reviewing the diff). Pre-co
 
 `bootstrap/app.php` calls `$middleware->trustProxies(at: '*')` so `$request->ip()`
 resolves the real client IP from `X-Forwarded-For` instead of Traefik's own
-docker-network IP — Laravel's `'*'` mode only trusts the *immediate* calling IP (i.e.
-Traefik's own hop), not an arbitrary forwarded chain from further upstream.
+docker-network IP.
 `App\Http\Middleware\VerifyCsrfToken` is swapped in for the default
 `PreventRequestForgery` in the `web` middleware group (via `replaceInGroup`) and skips
 CSRF token verification entirely when the resolved IP falls in a private or reserved
@@ -426,12 +425,16 @@ resolving to a public IP still goes through the normal `parent::tokensMatch()` c
 Because Laravel's own CSRF middleware unconditionally no-ops during test runs
 (`PreventRequestForgery::runningUnitTests()`), this can't be exercised with a real HTTP
 round trip in tests — `tests/Unit/Http/Middleware/VerifyCsrfTokenTest.php` calls
-`tokensMatch()` directly via reflection instead. Trusting `'*'` combined with the LAN
-bypass means a spoofed `X-Forwarded-For` from anything that reaches this container
-directly (bypassing Traefik) and claims a private IP would waive CSRF — acceptable
-given Traefik is the only intended entry point in this home-lab deployment, but worth
-narrowing `trustProxies` to Traefik's actual container/network IP if this app is ever
-exposed differently.
+`tokensMatch()` directly via reflection instead.
+
+**Known weakness, deliberately accepted for now:** `'*'` marks every proxy trusted, so
+Symfony walks the whole `X-Forwarded-For` chain and takes the leftmost entry — which is
+client-supplied. Traefik appends to that header rather than replacing it, so a request
+arriving *through* the proxy carrying `X-Forwarded-For: 10.0.0.1` resolves to a private
+IP and skips CSRF, not just one that reaches the container directly. Acceptable while
+Traefik is the only entry point to a single-user home-lab app with no accounts, but
+`trustProxies` should be narrowed to Traefik's actual container/network CIDR before this
+is exposed any other way.
 
 ## Git
 

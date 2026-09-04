@@ -38,11 +38,6 @@ new class extends Component
         $this->downloaded = $result['downloaded'] ?? [];
         $this->deleted = $result['deleted'] ?? [];
         $this->current = $result['current'] ?? null;
-
-        $api->update([
-            'cached_data' => $result['status'] === 'ok' ? $result['raw'] : null,
-            'last_fetched_at' => now(),
-        ]);
     }
 
     public function placeholder(): string

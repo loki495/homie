@@ -411,30 +411,37 @@ code sets (dry-run only — never auto-apply without reviewing the diff). Pre-co
   it's not a real Rector problem, just a user mismatch versus the hook. Run Rector
   manually the same way the hook does, without `-u www-data` (or `-u root`), to match.
 
-## Reverse-proxy trust and LAN CSRF exemption
+## Embedding in an iframe, and why there is no CSRF exemption
 
-`bootstrap/app.php` calls `$middleware->trustProxies(at: '*')` so `$request->ip()`
-resolves the real client IP from `X-Forwarded-For` instead of Traefik's own
-docker-network IP.
-`App\Http\Middleware\VerifyCsrfToken` is swapped in for the default
-`PreventRequestForgery` in the `web` middleware group (via `replaceInGroup`) and skips
-CSRF token verification entirely when the resolved IP falls in a private or reserved
-range (`FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE`) — a deliberate LAN
-convenience so requests from the home network aren't fighting CSRF tokens. A request
-resolving to a public IP still goes through the normal `parent::tokensMatch()` check.
-Because Laravel's own CSRF middleware unconditionally no-ops during test runs
-(`PreventRequestForgery::runningUnitTests()`), this can't be exercised with a real HTTP
-round trip in tests — `tests/Unit/Http/Middleware/VerifyCsrfTokenTest.php` calls
-`tokensMatch()` directly via reflection instead.
+This dashboard is embedded as an `<iframe>` in a Home Assistant dashboard, which is a
+**different origin**. That is a cookie problem, not an IP problem, and it is worth
+knowing which one you are actually looking at if the symptom ever returns.
 
-**Known weakness, deliberately accepted for now:** `'*'` marks every proxy trusted, so
-Symfony walks the whole `X-Forwarded-For` chain and takes the leftmost entry — which is
-client-supplied. Traefik appends to that header rather than replacing it, so a request
-arriving *through* the proxy carrying `X-Forwarded-For: 10.0.0.1` resolves to a private
-IP and skips CSRF, not just one that reaches the container directly. Acceptable while
-Traefik is the only entry point to a single-user home-lab app with no accounts, but
-`trustProxies` should be narrowed to Traefik's actual container/network CIDR before this
-is exposed any other way.
+Laravel's session cookie defaults to `SameSite=Lax`, and browsers do not send a Lax
+cookie on cross-site subrequests — an iframe on another origin included. Inside that
+frame there is therefore no session, so there is no session CSRF token to compare
+against, so every POST fails token verification. The fix is `SESSION_SAME_SITE=none`
+plus `SESSION_SECURE_COOKIE=true` (browsers only honour `None` alongside `Secure`, so
+the dashboard must be served over HTTPS — Traefik already terminates TLS here). Both
+are documented and commented out in `.env.example`; leave them unset for a
+same-origin-only deployment, since Lax is the safer default.
+
+**What this replaced, and why:** the original workaround was a custom
+`App\Http\Middleware\VerifyCsrfToken` that skipped token verification entirely whenever
+`$request->ip()` fell in a private or reserved range. That treated the symptom (POSTs
+failing) rather than the cause (no cookie, hence no session), and it was unsound:
+combined with `trustProxies(at: '*')`, Symfony walks the whole `X-Forwarded-For` chain
+and takes the leftmost, client-supplied entry, and Traefik *appends* to that header
+rather than replacing it — so a request arriving through the proxy carrying
+`X-Forwarded-For: 10.0.0.1` resolved to a private IP and waived CSRF. A spoofable
+header was the only thing between an attacker and an unprotected POST. Fixing the
+cookie removes the need for any exemption, so the middleware and its test are gone and
+Laravel's normal token check now runs on every request — strictly more protection than
+before, not less.
+
+`trustProxies(at: '*')` remains, but is no longer load-bearing for security: it now only
+affects the accuracy of the client IP in logs. Narrowing it to Traefik's actual
+container/network CIDR is still tidier, just no longer urgent.
 
 ## Git
 

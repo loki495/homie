@@ -11,8 +11,8 @@ use App\Models\Machine;
 /**
  * Serializes every group/card/machine into a plain-array config shape, for the
  * Backup tab's "Export" download. Deliberately excludes secrets (card_apis.api_key/
- * password, machines.ssh_private_key) and runtime/cache data (last_output,
- * cached_data, last_fetched_at, ...) — this is a config backup, not a full table
+ * password, machines.ssh_private_key) and runtime data (last_output,
+ * last_exit_code, ...) — this is a config backup, not a full table
  * dump. Secret fields are replaced with a `has_*` boolean so ConfigImporter can
  * tell the user which cards/machines need credentials re-entered after import.
  *

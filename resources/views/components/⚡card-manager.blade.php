@@ -5,7 +5,9 @@ use App\Enums\CardType;
 use App\Models\Card;
 use App\Models\Group;
 use App\Support\DashboardIcons;
+use Illuminate\Contracts\Encryption\DecryptException;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Facades\DB;
 use Livewire\Attributes\On;
 use Livewire\Component;
 
@@ -156,19 +158,27 @@ new class extends Component
                 'username' => $this->auth_type === 'basic' && $this->username !== '' ? $this->username : null,
             ];
 
-            if ($this->auth_type !== 'api_key') {
+            if ($this->auth_type !== 'api_key' || ($this->api_key === '' && ! $this->hasApiKey)) {
                 $attributes['api_key'] = null;
             } elseif ($this->api_key !== '') {
                 $attributes['api_key'] = $this->api_key;
             }
             // else: field left blank on an existing key — leave api_key untouched.
 
-            if ($this->auth_type !== 'basic') {
+            if ($this->auth_type !== 'basic' || ($this->password === '' && ! $this->hasPassword)) {
                 $attributes['password'] = null;
             } elseif ($this->password !== '') {
                 $attributes['password'] = $this->password;
             }
             // else: field left blank on an existing password — leave password untouched.
+
+            if ($this->editingId && ! $this->hasApiKey) {
+                DB::table('card_apis')->where('card_id', $card->id)->update(['api_key' => null]);
+            }
+
+            if ($this->editingId && ! $this->hasPassword) {
+                DB::table('card_apis')->where('card_id', $card->id)->update(['password' => null]);
+            }
 
             $card->api()->updateOrCreate([], $attributes);
         } else {
@@ -206,10 +216,20 @@ new class extends Component
         $this->base_url = $card->api?->base_url ?? '';
         $this->auth_type = $card->api?->auth_type ?? 'api_key';
         $this->api_key = '';
-        $this->hasApiKey = $card->api?->api_key !== null;
+        $this->hasApiKey = false;
+        try {
+            $this->hasApiKey = $card->api?->api_key !== null;
+        } catch (DecryptException) {
+            // The key may have been encrypted with an older APP_KEY; let the user replace it.
+        }
         $this->username = $card->api?->username ?? '';
         $this->password = '';
-        $this->hasPassword = $card->api?->password !== null;
+        $this->hasPassword = false;
+        try {
+            $this->hasPassword = $card->api?->password !== null;
+        } catch (DecryptException) {
+            // The password may have been encrypted with an older APP_KEY; let the user replace it.
+        }
         $this->icon = (string) $card->icon;
         $this->dispatch('scroll-sidebar-top');
     }

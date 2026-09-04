@@ -51,10 +51,10 @@ class SonarrFetcher implements ProviderFetcher
                 'downloaded' => $this->history($api, $base, self::EVENT_TYPE_DOWNLOADED),
                 'deleted' => $this->history($api, $base, self::EVENT_TYPE_DELETED, basenameOnly: true),
             ];
-        } catch (\Throwable) {
+        } catch (\Throwable $exception) {
             return [
                 'status' => 'error',
-                'summary' => 'Could not reach '.$api->base_url,
+                'summary' => ApiHttpClient::errorSummary($exception, $api),
                 'stats' => [],
                 'raw' => null,
             ];

@@ -5,14 +5,21 @@ declare(strict_types=1);
 use App\Models\Card;
 use App\Models\Group;
 use App\Models\Machine;
+use Carbon\Carbon;
 use Livewire\Livewire;
 
 it('downloads a json export named with today\'s date', function () {
     Group::factory()->create(['name' => 'Media']);
 
-    Livewire::test('backup-manager')
-        ->call('export')
-        ->assertFileDownloaded('homie-backup-'.now()->format('Y-m-d-His').'.json');
+    Carbon::setTestNow('2026-09-04 18:36:45');
+
+    try {
+        Livewire::test('backup-manager')
+            ->call('export')
+            ->assertFileDownloaded('homie-backup-2026-09-04-183645.json');
+    } finally {
+        Carbon::setTestNow();
+    }
 });
 
 it('imports a valid backup and reports how much was imported', function () {

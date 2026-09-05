@@ -35,7 +35,7 @@ it('keeps the Vite hot file for the local development hostname', function () {
     config()->set('session.secure', false);
     Vite::useHotFile(public_path('hot'));
 
-    $request = Request::create('http://homie.dev.local.test/');
+    $request = Request::create('http://localhost/');
     $response = (new UseStaticAssetsForRemoteHost)->handle(
         $request,
         fn (): Response => new Response(json_encode([

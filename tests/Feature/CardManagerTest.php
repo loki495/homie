@@ -354,16 +354,16 @@ it('deletes a card and its output record', function () {
 
 it('prefills the new-card form from a discovery result without saving it', function () {
     $component = Livewire::test('card-manager')
-        ->call('prefillFromDiscovery', 'sonarr', 'http://sonarr.dev.local.test')
+        ->call('prefillFromDiscovery', 'sonarr', 'http://sonarr.example')
         ->assertSet('name', 'sonarr')
         ->assertSet('type', 'link')
-        ->assertSet('url', 'http://sonarr.dev.local.test')
+        ->assertSet('url', 'http://sonarr.example')
         ->assertSet('editingId', null);
 
     expect(Card::where('name', 'sonarr')->exists())->toBeFalse();
 
     $component->set('type', 'api')
-        ->set('base_url', 'http://sonarr.dev.local.test')
+        ->set('base_url', 'http://sonarr.example')
         ->set('provider', 'sonarr')
         ->call('save');
 
@@ -406,7 +406,7 @@ it('preloads icon suggestions when prefilling from a discovery result', function
     fakeDashboardIconsIndex();
 
     Livewire::test('card-manager')
-        ->call('prefillFromDiscovery', 'sonarr', 'http://sonarr.dev.local.test')
+        ->call('prefillFromDiscovery', 'sonarr', 'http://sonarr.example')
         ->assertSet('iconResults', [
             ['name' => 'sonarr', 'url' => 'https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/sonarr.svg'],
         ]);

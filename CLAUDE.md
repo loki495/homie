@@ -451,7 +451,7 @@ mirror, so work happens directly on `main`. Repo: `loki495/homie` on GitHub (pub
 
 ## Testing
 
-169 Pest tests (Feature + Unit) as of this writing, covering happy *and* sad paths for
+161 Pest tests (Feature + Unit) as of this writing, covering happy *and* sad paths for
 essentially every Livewire component and support class — cards, groups, machines,
 discovery (Docker API + SSH, including the host-network/Traefik-label edge cases),
 backup import/export, icon search, CSRF/middleware, and every `ApiProvider` fetcher

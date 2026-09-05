@@ -77,7 +77,7 @@ it('prefers the traefik host label over the raw ip:port when discovering via the
                 'Ports' => [['PrivatePort' => 8989, 'PublicPort' => 8989, 'Type' => 'tcp']],
                 'Labels' => [
                     'traefik.enable' => 'true',
-                    'traefik.http.routers.sonarr.rule' => 'Host(`sonarr.dev.local.test`)',
+                    'traefik.http.routers.sonarr.rule' => 'Host(`sonarr.example`)',
                 ],
             ],
         ], 200),
@@ -85,7 +85,7 @@ it('prefers the traefik host label over the raw ip:port when discovering via the
 
     $component = Livewire::test('machine-manager')->call('discover', $machine->id);
 
-    expect($component->get('discovered')[0]['url'])->toBe('http://sonarr.dev.local.test');
+    expect($component->get('discovered')[0]['url'])->toBe('http://sonarr.example');
 });
 
 it('surfaces a traefik-labeled container even with no published port, via the docker api', function () {
@@ -100,7 +100,7 @@ it('surfaces a traefik-labeled container even with no published port, via the do
                 'Ports' => [['PrivatePort' => 8989, 'Type' => 'tcp']],
                 'Labels' => [
                     'traefik.enable' => 'true',
-                    'traefik.http.routers.sonarr.rule' => 'Host(`sonarr.dev.local.test`)',
+                    'traefik.http.routers.sonarr.rule' => 'Host(`sonarr.example`)',
                 ],
             ],
             [
@@ -116,7 +116,7 @@ it('surfaces a traefik-labeled container even with no published port, via the do
 
     expect($component->get('discovered'))->toHaveCount(1)
         ->and($component->get('discovered')[0]['name'])->toBe('sonarr')
-        ->and($component->get('discovered')[0]['url'])->toBe('http://sonarr.dev.local.test');
+        ->and($component->get('discovered')[0]['url'])->toBe('http://sonarr.example');
 });
 
 it('falls back to the image-declared exposed port for host-network containers, via the docker api', function () {
@@ -232,7 +232,7 @@ it('prefers the traefik host label over the raw ip:port when discovering over ss
         'Names' => 'sonarr',
         'Image' => 'linuxserver/sonarr',
         'Ports' => '0.0.0.0:8989->8989/tcp',
-        'Labels' => 'traefik.enable=true,traefik.http.routers.sonarr.rule=Host(`sonarr.dev.local.test`)',
+        'Labels' => 'traefik.enable=true,traefik.http.routers.sonarr.rule=Host(`sonarr.example`)',
     ]);
 
     Process::fake([
@@ -241,7 +241,7 @@ it('prefers the traefik host label over the raw ip:port when discovering over ss
 
     $component = Livewire::test('machine-manager')->call('discover', $machine->id);
 
-    expect($component->get('discovered')[0]['url'])->toBe('http://sonarr.dev.local.test');
+    expect($component->get('discovered')[0]['url'])->toBe('http://sonarr.example');
 });
 
 it('surfaces a traefik-labeled container even with no published port, over ssh', function () {
@@ -252,7 +252,7 @@ it('surfaces a traefik-labeled container even with no published port, over ssh',
             'Names' => 'sonarr',
             'Image' => 'linuxserver/sonarr',
             'Ports' => '8989/tcp',
-            'Labels' => 'traefik.enable=true,traefik.http.routers.sonarr.rule=Host(`sonarr.dev.local.test`)',
+            'Labels' => 'traefik.enable=true,traefik.http.routers.sonarr.rule=Host(`sonarr.example`)',
         ]),
         json_encode(['Names' => 'internal-cache', 'Image' => 'redis', 'Ports' => '6379/tcp']),
     ]);
@@ -265,7 +265,7 @@ it('surfaces a traefik-labeled container even with no published port, over ssh',
 
     expect($component->get('discovered'))->toHaveCount(1)
         ->and($component->get('discovered')[0]['name'])->toBe('sonarr')
-        ->and($component->get('discovered')[0]['url'])->toBe('http://sonarr.dev.local.test');
+        ->and($component->get('discovered')[0]['url'])->toBe('http://sonarr.example');
 });
 
 it('falls back to the image-declared exposed port for host-network containers, over ssh', function () {

@@ -33,7 +33,9 @@ real dashboard fills in with whatever services you configure.
 
 - Service cards that open the linked site on click, each with an optional icon — paste
   any image URL, or search recognized self-hosted apps (sonarr, plex, etc.) against the
-  free homarr-labs/dashboard-icons index for a one-click suggestion
+  free homarr-labs/dashboard-icons index for a one-click suggestion, with a Heroicons
+  fallback (generic folder/router/link-shaped icons) for anything not app-branded
+- Dark mode, following your system preference or toggled manually
 - Docker service discovery: save a scan target (name + host) in the **Discovery** tab of the Manage sidebar, run a manual
   scan against its Docker Engine API (or `docker ps` over SSH), and turn discovered
   containers into cards. Prefers a container's Traefik `Host()` label for the URL when
@@ -43,15 +45,17 @@ real dashboard fills in with whatever services you configure.
   URL (no port) when the image declares none at all, rather than dropping them
 - Manual custom links for anything discovery doesn't cover
 - Editable "output" cards: user-defined shell commands (local or remote, e.g. via SSH),
-  run non-blockingly on each page load, rendering raw output (disk space, load, etc.).
+  run non-blockingly on page load and optionally on an auto-refresh interval you set per
+  card (5s and up), rendering raw output (disk space, load, etc.).
   If a command SSHes into a saved machine, that machine needs a key saved in the
   **Discovery** tab first — saving one auto-syncs it to `storage/ssh/{machine-name}` for the command to
   use (e.g. `-i /var/www/html/storage/ssh/media`); commands referencing a machine with
   no saved key will fail with a permission-denied error
 - API-connected cards for services with an API — Sonarr and Radarr show series/movies,
-  missing, and queue counts; Prowlarr shows enabled indexers, grabs, and failures;
-  Bazarr shows missing subtitle counts; NZBGet shows download speed, status, and
-  remaining size. API key or username/password auth, whichever the service needs.
+  missing, and queue counts, plus a "Recently downloaded"/"Recently deleted" list; Prowlarr
+  shows enabled indexers, grabs, and failures; Bazarr shows missing subtitle counts; NZBGet
+  shows download speed, status, remaining size, and the name of the file currently
+  downloading. API key or username/password auth, whichever the service needs.
   Clicking the card opens the service, same as a link card. A generic fallback covers
   any other API with a plain reachability check
 - Drag-and-drop reordering for both cards and groups in Arrange mode (native HTML5 drag,
@@ -87,6 +91,17 @@ real dashboard fills in with whatever services you configure.
   first paint — but the icon and name are plain, already-loaded `Card` attributes, so they
   moved out into an eagerly-rendered Blade partial instead of sitting behind the same
   lazy boundary as the fetch itself.
+- **Fixing the cause instead of the symptom, for CSRF inside an iframe.** This dashboard
+  is meant to be embeddable (e.g. in a Home Assistant dashboard), a different-origin
+  iframe — which meant no session cookie under the default `SameSite=Lax`, hence no CSRF
+  token, hence every POST failing. An earlier fix waived CSRF for requests from private/
+  reserved IP ranges, which turned out to be exploitable: combined with `trustProxies(at:
+  '*')`, an attacker-controlled `X-Forwarded-For` header could spoof a private IP and
+  bypass CSRF entirely. The actual fix was two `.env` settings
+  (`SESSION_SAME_SITE=none` + `SESSION_SECURE_COOKIE=true`) so the session cookie itself
+  survives the cross-origin embed — removing the need for any exemption. Laravel's normal
+  CSRF check now runs on every request, strictly more protection than the workaround it
+  replaced, not less.
 
 ## Local development
 

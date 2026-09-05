@@ -34,7 +34,7 @@ real dashboard fills in with whatever services you configure.
 - Service cards that open the linked site on click, each with an optional icon — paste
   any image URL, or search recognized self-hosted apps (sonarr, plex, etc.) against the
   free homarr-labs/dashboard-icons index for a one-click suggestion
-- Docker service discovery: save a scan target (name + host) in Settings, run a manual
+- Docker service discovery: save a scan target (name + host) in the **Discovery** tab of the Manage sidebar, run a manual
   scan against its Docker Engine API (or `docker ps` over SSH), and turn discovered
   containers into cards. Prefers a container's Traefik `Host()` label for the URL when
   present, so services with no host-published port are still discovered correctly.
@@ -44,8 +44,8 @@ real dashboard fills in with whatever services you configure.
 - Manual custom links for anything discovery doesn't cover
 - Editable "output" cards: user-defined shell commands (local or remote, e.g. via SSH),
   run non-blockingly on each page load, rendering raw output (disk space, load, etc.).
-  If a command SSHes into a saved machine, that machine needs a key saved in Settings
-  first — saving one auto-syncs it to `storage/ssh/{machine-name}` for the command to
+  If a command SSHes into a saved machine, that machine needs a key saved in the
+  **Discovery** tab first — saving one auto-syncs it to `storage/ssh/{machine-name}` for the command to
   use (e.g. `-i /var/www/html/storage/ssh/media`); commands referencing a machine with
   no saved key will fail with a permission-denied error
 - API-connected cards for services with an API — Sonarr and Radarr show series/movies,

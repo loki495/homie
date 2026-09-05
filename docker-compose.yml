@@ -17,7 +17,7 @@ services:
     restart: unless-stopped
     # Published so a fresh clone can reach the app with zero external setup — the
     # actual production/LAN routing (Traefik host rules, DNS) lives outside this
-    # repo, in Andres's own reverse-proxy config, not something a clone gets for
+    # repo, in your own reverse-proxy config, not something a clone gets for
     # free. Override the host port with APP_PORT in .env if 8090 collides with
     # something else already running.
     ports:
@@ -38,9 +38,9 @@ services:
   # tests. Run with: docker compose --profile test run --rm app-test ./vendor/bin/pest tests/Browser
   # History: this service used to be attached to an external `web` Traefik network
   # (removed repo-wide — see README's "Local development" and "If you run this behind
-  # Traefik" sections) that only existed on Andres's machine; attaching to it broke this
-  # job outright in CI with "network web declared as external, but could not be found"
-  # the first time it ran there.
+  # Traefik" sections) that only existed on a developer's machine; attaching to it
+  # broke this job outright in CI with "network web declared as external, but could
+  # not be found" the first time it ran there.
   app-test:
     container_name: homie-app-test
     profiles: ["test"]

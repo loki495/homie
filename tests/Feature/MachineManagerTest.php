@@ -195,14 +195,14 @@ it('creates an ssh scan target with a user and port', function () {
         ->set('name', 'Local')
         ->set('host', '192.168.1.12')
         ->set('discovery_method', 'ssh')
-        ->set('ssh_user', 'andres')
+        ->set('ssh_user', 'deploy')
         ->set('ssh_port', '2222')
         ->call('save');
 
     $machine = Machine::where('name', 'Local')->sole();
 
     expect($machine->discovery_method)->toBe(DiscoveryMethod::Ssh)
-        ->and($machine->ssh_user)->toBe('andres')
+        ->and($machine->ssh_user)->toBe('deploy')
         ->and($machine->ssh_port)->toBe(2222);
 });
 

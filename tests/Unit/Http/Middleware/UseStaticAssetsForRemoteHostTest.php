@@ -8,11 +8,11 @@ use Illuminate\Support\Facades\Vite;
 use Symfony\Component\HttpFoundation\Response;
 
 it('uses built assets for a configured remote hostname', function () {
-    config()->set('app.static_asset_hosts', ['homie.ac495.net']);
+    config()->set('app.static_asset_hosts', ['dashboard.example.com']);
     config()->set('session.secure', false);
     Vite::useHotFile(public_path('hot'));
 
-    $request = Request::create('https://homie.ac495.net/');
+    $request = Request::create('https://dashboard.example.com/');
     $response = (new UseStaticAssetsForRemoteHost)->handle(
         $request,
         fn (): Response => new Response(json_encode([
@@ -31,7 +31,7 @@ it('uses built assets for a configured remote hostname', function () {
 });
 
 it('keeps the Vite hot file for the local development hostname', function () {
-    config()->set('app.static_asset_hosts', ['homie.ac495.net']);
+    config()->set('app.static_asset_hosts', ['dashboard.example.com']);
     config()->set('session.secure', false);
     Vite::useHotFile(public_path('hot'));
 

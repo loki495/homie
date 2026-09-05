@@ -1,0 +1,29 @@
+# Copy this file to docker-compose.override.yml (gitignored, auto-merged by
+# `docker compose` alongside docker-compose.yml) if you run Traefik and want
+# nicer hostnames instead of the published port. Not required otherwise —
+# see README.md's "Local development" section.
+#
+# `web` below must be the external Docker network your own Traefik instance
+# watches, and you need to set your own hostname for the app's router rule
+# (only vite's is filled in below as an example — app has none by default
+# since there's no one hostname to assume).
+services:
+  app:
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.homie.rule=Host(`homie.yourdomain.example`)"
+      - "traefik.http.services.homie.loadbalancer.server.port=80"
+    networks:
+      - web
+  vite:
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.homie-vite.rule=Host(`vite.homie.yourdomain.example`)"
+      - "traefik.http.routers.homie-vite.entrypoints=web"
+      - "traefik.http.services.homie-vite.loadbalancer.server.port=5173"
+    networks:
+      - web
+
+networks:
+  web:
+    external: true

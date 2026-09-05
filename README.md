@@ -90,24 +90,37 @@ real dashboard fills in with whatever services you configure.
 
 ## Local development
 
-Requires Docker. The `web` Docker network referenced in `docker-compose.yml` is
-optional — it only matters if you also run a Traefik instance and want nicer
-hostnames; without it, the app is reachable directly via a published port.
+Requires Docker. Nothing external is required — `docker-compose.yml` has no dependency
+on a pre-existing network or any other host-specific setup.
 
 ```bash
+git clone https://github.com/loki495/homie.git
+cd homie
 docker compose up -d --build
-docker compose run --rm vite npm install   # first time only
-npm run build                              # or `docker compose run --rm vite npm run build`
+docker exec -u www-data homie-app composer setup   # composer install, .env, APP_KEY, migrate
+docker compose run --rm vite npm install           # first time only
+docker compose run --rm vite npm run build
 ```
 
 Site: http://localhost:8090 (override the host port with `APP_PORT` in `.env` if
 8090 collides with something else already running)
 
-If you also run Traefik with a `web` external network and your own DNS/hosts
-routing to it, you can additionally reach the app and the Vite dev server (HMR)
-at whatever hostnames you configure — see the `traefik.*` labels in
-`docker-compose.yml`. That routing lives entirely in your own Traefik config;
-nothing in this repo assumes or ships one.
+#### If you run this behind Traefik
+
+This repo doesn't ship any Traefik network or routing — the steps above are enough on
+their own. If you do run a Traefik instance and want nicer hostnames instead of the
+published port:
+
+```bash
+cp docker-compose.override.yml.example docker-compose.override.yml
+# edit the hostnames inside it, then:
+docker compose up -d --build
+```
+
+`docker compose` auto-merges `docker-compose.override.yml` (gitignored, never
+clobbered by a `git pull`) on top of `docker-compose.yml`, so nothing in the tracked
+compose file needs hand-editing. That routing lives entirely in your own Traefik
+config; nothing in this repo assumes or ships one.
 
 An optional Cloudflare Tunnel deployment can expose the dashboard at the
 `APP_URL` hostname. Set `STATIC_ASSET_HOSTS` to the externally exposed hostname

@@ -26,27 +26,21 @@ services:
       - ./:/var/www/html
       - ./docker/logs:/var/www/html/logs:rw
       - ./storage/ssh:/var/www/html/storage/ssh:rw
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.services.homie.loadbalancer.server.port=80"
     build:
       context: .
       target: base
       dockerfile_inline: *app-dockerfile
-    networks:
-      - web
 
   # Browser (Pest + Playwright) tests only — never started by a plain `docker compose
   # up`. Adds Node.js + Chromium on top of the same `base` image `app` uses, kept out
   # of `app` itself since that image also serves production over the tunnel (see
   # CLAUDE.md) and shouldn't carry a JS runtime + browser binary just for dev-time
   # tests. Run with: docker compose --profile test run --rm app-test ./vendor/bin/pest tests/Browser
-  # No `networks: [web]` here, deliberately — unlike app/vite it never needs Traefik
-  # routing or to reach another service; Playwright drives a headless browser against
-  # the Laravel app booted in-process in this same container (see CLAUDE.md's
-  # "Browser testing" section). Attaching to `web` (external, Traefik-managed, only
-  # exists on Andres's machine) broke this job outright in CI with "network web
-  # declared as external, but could not be found" the first time it ran there.
+  # History: this service used to be attached to an external `web` Traefik network
+  # (removed repo-wide — see README's "Local development" and "If you run this behind
+  # Traefik" sections) that only existed on Andres's machine; attaching to it broke this
+  # job outright in CI with "network web declared as external, but could not be found"
+  # the first time it ran there.
   app-test:
     container_name: homie-app-test
     profiles: ["test"]
@@ -73,14 +67,3 @@ services:
       start_period: 20s
     volumes:
       - ./:/var/www/html
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.homie-vite.rule=Host(`vite.homie.dev.local.test`)"
-      - "traefik.http.routers.homie-vite.entrypoints=web"
-      - "traefik.http.services.homie-vite.loadbalancer.server.port=5173"
-    networks:
-      - web
-
-networks:
-  web:
-    external: true

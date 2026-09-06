@@ -6,6 +6,7 @@ use Illuminate\Foundation\Testing\RefreshDatabaseState;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Tests\TestCase;
 
 /**
  * Feature-level test of the two demo-mode middlewares (ResolveDemoDatabase +
@@ -95,6 +96,12 @@ it('rejects the wrong password', function () {
 });
 
 it('allows access with the correct demo credentials and isolates the visitor to their own copy', function () {
+    // home.blade.php is the only view that renders @vite, and no built
+    // public/build/manifest.json exists in a fresh CI checkout - same reason
+    // HomeTest.php disables it (see this repo's own CLAUDE.md "Testing" section).
+    /** @var TestCase $this */
+    $this->withoutVite();
+
     $this->withHeaders(['Authorization' => 'Basic '.base64_encode('demo@example.com:secret-password')])
         ->get('/')
         ->assertStatus(200);

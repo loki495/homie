@@ -116,6 +116,13 @@ new class extends Component
 
         $this->scanningMachineId = $machineId;
 
+        if (config('homie.demo_mode')) {
+            $this->discovered = $this->demoDiscoveryContainers();
+            $this->scanError = null;
+
+            return;
+        }
+
         $result = match ($machine->discovery_method) {
             DiscoveryMethod::Docker => app(MachineDiscovery::class)->viaDocker($machine),
             DiscoveryMethod::Ssh => app(MachineDiscovery::class)->viaSsh($machine),
@@ -123,6 +130,24 @@ new class extends Component
 
         $this->discovered = $result->containers;
         $this->scanError = $result->error;
+    }
+
+    /**
+     * Demo mode only: there is nothing real to scan (mounting a real Docker
+     * socket into a public demo container is off the table - see this repo's
+     * CLAUDE.md "Design principle" and the outside-repo demo-sites-and-cd
+     * plan), so a canned result stands in for a real scan. Mapped to the mock
+     * arr-stack services in docker-compose.yml so the Discovery UI stays fully
+     * clickable and "Add to cards" leads somewhere real, not a dead link.
+     *
+     * @return list<array{name: string, image: string, url: string}>
+     */
+    private function demoDiscoveryContainers(): array
+    {
+        return [
+            ['name' => 'sonarr', 'image' => 'linuxserver/sonarr', 'url' => (string) config('homie.demo_mock_sonarr_url')],
+            ['name' => 'radarr', 'image' => 'linuxserver/radarr', 'url' => (string) config('homie.demo_mock_radarr_url')],
+        ];
     }
 
     public function addCardFromDiscovery(string $name, string $url): void

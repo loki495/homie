@@ -73,5 +73,26 @@ class DemoDashboardSeeder extends Seeder
             'url' => 'http://192.168.1.1',
             'sort_order' => 0,
         ]);
+
+        // Demo mode only (config('homie.demo_mode')) - this seeder is also run
+        // manually for plain local-dev sample data (see the class docblock), and
+        // the mock arr-stack service this points at only exists in the demo
+        // compose stack (docker-compose.yml's mock-sonarr, --profile demo), so
+        // gating this keeps a non-demo run of this same seeder unaffected. Proves
+        // the mock-API feature works passively: a visitor sees a live-looking
+        // "Sonarr" card with real fetched stats with no action needed.
+        if (config('homie.demo_mode')) {
+            Card::create([
+                'group_id' => $mediaGroup->id,
+                'name' => 'Sonarr',
+                'type' => CardType::Api,
+                'url' => (string) config('homie.demo_mock_sonarr_url'),
+                'sort_order' => 2,
+            ])->api()->create([
+                'provider' => ApiProvider::Sonarr,
+                'base_url' => (string) config('homie.demo_mock_sonarr_url'),
+                'api_key' => 'demo-api-key',
+            ]);
+        }
     }
 }

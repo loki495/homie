@@ -60,6 +60,17 @@ parameters:
             # into macros added outside a stub/ide-helper file.
             message: '#Call to an undefined method Illuminate\\Testing\\TestResponse::assertSeeLivewire\(\)#'
             path: tests/*
+        -
+            # Same class of gap as withoutVite()/assertSeeLivewire() above: PHPStan
+            # resolves $this inside a Pest it()/test() closure as Pest's own
+            # Pend[...]Calls\TestCall proxy type rather than the real (runtime-bound)
+            # Tests\TestCase, so it doesn't see genuine TestCase/MakesHttpRequests
+            # methods called directly on $this — get()/withHeaders() (DemoModeTest)
+            # or the Laravel test lifecycle hook beforeApplicationDestroyed() (used
+            # in DemoModeTest/ResolveDemoDatabaseTest to correct RefreshDatabase's
+            # teardown around the demo-mode connection switch).
+            message: '#Call to an undefined method Pest\\PendingCalls\\TestCall::(beforeApplicationDestroyed|get|withHeaders)\(\)#'
+            path: tests/*
 
     scanFiles:
         - vendor/laravel/framework/src/Illuminate/Foundation/helpers.php

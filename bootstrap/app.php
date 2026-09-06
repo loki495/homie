@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+use App\Http\Middleware\RequireBasicAuthInDemoMode;
+use App\Http\Middleware\ResolveDemoDatabase;
 use App\Http\Middleware\UseStaticAssetsForRemoteHost;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -26,6 +28,14 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->trustProxies(at: '*');
 
         $middleware->prependToGroup('web', UseStaticAssetsForRemoteHost::class);
+
+        // Demo mode only (config('homie.demo_mode')) - no-op otherwise. Order
+        // matters: the database must be resolved to the current visitor's own
+        // copy before the Basic Auth check queries the users table.
+        $middleware->appendToGroup('web', [
+            ResolveDemoDatabase::class,
+            RequireBasicAuthInDemoMode::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(

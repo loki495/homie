@@ -1,0 +1,1 @@
+command="/usr/local/bin/allowed-command.sh",no-port-forwarding,no-X11-forwarding,no-agent-forwarding,no-pty,no-user-rc,restrict ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAICL9cRD9gbd6ipYOWazY8DJFFzHl/KER0mwHjtmom69c homie-demo-sandbox

@@ -30,6 +30,13 @@ services:
       context: .
       target: base
       dockerfile_inline: *app-dockerfile
+    # `default` (implicit) for everything else; `sandbox-net` only to reach
+    # output-sandbox (demo mode only) - kept off that network entirely for a
+    # normal, non-demo run, and output-sandbox itself is never on `default`,
+    # so it has no route to mock-sonarr/mock-radarr/vite even in demo mode.
+    networks:
+      - default
+      - sandbox-net
 
   # Browser (Pest + Playwright) tests only — never started by a plain `docker compose
   # up`. Adds Node.js + Chromium on top of the same `base` image `app` uses, kept out
@@ -102,3 +109,35 @@ services:
     command: ["php", "-S", "0.0.0.0:80", "-t", "/mock", "/mock/router.php"]
     ports:
       - "${DEMO_MOCK_RADARR_PORT:-8192}:80"
+
+  # Locked-down SSH target for the output-card feature's demo (see
+  # docker/ssh-sandbox/README.md for the full threat model and adversarial
+  # test results). Deliberately on its own network with nothing else on it
+  # besides `app` - no route to mock-sonarr/mock-radarr/vite/the host.
+  output-sandbox:
+    container_name: homie-output-sandbox
+    profiles: ["demo"]
+    build:
+      context: ./docker/ssh-sandbox
+    restart: unless-stopped
+    cap_drop:
+      - ALL
+    # The minimum sshd itself needs to function at all under a full cap_drop
+    # - confirmed by hand, not guessed: SYS_CHROOT for its own pre-auth
+    # privilege-separation chroot into /var/empty, SETUID/SETGID to drop from
+    # root to the sandbox user post-auth. Nothing broader than that.
+    cap_add:
+      - SYS_CHROOT
+      - SETUID
+      - SETGID
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - sandbox-net
+    ports:
+      - "${DEMO_OUTPUT_SANDBOX_PORT:-2222}:2222"
+
+networks:
+  default: {}
+  sandbox-net:
+    driver: bridge

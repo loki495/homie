@@ -23,7 +23,7 @@ RUN rm -f bootstrap/cache/*.php \
 FROM php:8.5-apache
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-        libsqlite3-dev libzip-dev \
+        libsqlite3-dev libzip-dev openssh-client \
     && docker-php-ext-install pdo_sqlite zip \
     && a2enmod rewrite headers \
     && sed -i 's|DocumentRoot .*|DocumentRoot /var/www/html/public|' /etc/apache2/sites-available/000-default.conf \

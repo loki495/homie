@@ -1,0 +1,95 @@
+name: homie-prod
+
+# Deploy-style compose: every service's code is baked into its image at build
+# time (docker/Dockerfile.prod for app/scheduler, docker/mock-arr-api/Dockerfile,
+# docker/ssh-sandbox/Dockerfile) - no bind-mounted source, unlike the plain
+# docker-compose.yml used for local dev. This is what makes a Watchtower image
+# pull actually change what's running; the dev compose file's bind mount would
+# make a new pulled image invisible, still serving whatever's checked out on
+# disk. See docker/ssh-sandbox/README.md and CLAUDE.md's "Demo mode" section
+# for the demo-mode design this deployment runs.
+services:
+  app:
+    image: ghcr.io/loki495/homie:demo
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.prod
+    container_name: homie-app
+    restart: unless-stopped
+    env_file:
+      - .env
+    ports:
+      - "${APP_PORT:-8090}:80"
+    networks:
+      - default
+      - sandbox-net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/up"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  # Runs demo:cleanup (routes/console.php, daily, gated on demo_mode) - without
+  # this, stale per-visitor demo SQLite files under storage/demo-dbs/ never get
+  # deleted. Pre-existing gap on the bind-mount deployment (no scheduler service
+  # existed there either); fixed here rather than carried forward.
+  scheduler:
+    image: ghcr.io/loki495/homie:demo
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.prod
+    container_name: homie-scheduler
+    restart: unless-stopped
+    env_file:
+      - .env
+    entrypoint: []
+    command: php artisan schedule:work
+    depends_on:
+      app:
+        condition: service_healthy
+
+  mock-sonarr:
+    container_name: homie-mock-sonarr
+    build:
+      context: ./docker/mock-arr-api
+    restart: unless-stopped
+    environment:
+      MOCK_PROVIDER: sonarr
+    ports:
+      - "${DEMO_MOCK_SONARR_PORT:-8191}:80"
+
+  mock-radarr:
+    container_name: homie-mock-radarr
+    build:
+      context: ./docker/mock-arr-api
+    restart: unless-stopped
+    environment:
+      MOCK_PROVIDER: radarr
+    ports:
+      - "${DEMO_MOCK_RADARR_PORT:-8192}:80"
+
+  # Already fully self-contained at build time (see docker/ssh-sandbox/Dockerfile)
+  # - no bind mount to remove, unchanged from docker-compose.yml's version.
+  output-sandbox:
+    container_name: homie-output-sandbox
+    build:
+      context: ./docker/ssh-sandbox
+    restart: unless-stopped
+    cap_drop:
+      - ALL
+    cap_add:
+      - SYS_CHROOT
+      - SETUID
+      - SETGID
+    security_opt:
+      - no-new-privileges:true
+    ports:
+      - "${DEMO_OUTPUT_SANDBOX_PORT:-2222}:2222"
+    networks:
+      - sandbox-net
+
+networks:
+  default: {}
+  sandbox-net:
+    driver: bridge

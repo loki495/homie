@@ -3,9 +3,13 @@
     include anywhere without remembering the check at the call site. Explains
     what's available for a visitor building their own cards: the mock arr-stack
     API services from docker/mock-arr-api/router.php (see config/homie.php's
-    demo_mock_sonarr_url/demo_mock_radarr_url). The output-card section is a
-    placeholder - the sandboxed SSH target for that feature is being built
-    separately, see .ai/plans/2026-09-06-demo-sites-and-cd (outside this repo).
+    demo_mock_sonarr_url/demo_mock_radarr_url), and the locked-down SSH sandbox
+    for output-card commands (docker/ssh-sandbox/README.md) - the latter's
+    connection details are only shown when it's actually configured
+    (config('homie.demo_sandbox_ssh_private_key')), same guard
+    DemoDashboardSeeder uses to decide whether to seed the "Demo sandbox"
+    Machine/"Try: uptime" card at all, so this panel never advertises a
+    machine that isn't really there.
 --}}
 @if (config('homie.demo_mode'))
     <div
@@ -57,12 +61,50 @@
 
             <div>
                 <p class="font-semibold">Output-card commands</p>
-                <!-- TODO: SSH sandbox command list, added separately -->
-                <p class="mt-1 text-sky-800/90 dark:text-sky-200/90">
-                    Output-type cards run a real shell command against a saved machine. The sandboxed
-                    demo target for that is being finished separately — check back soon for a safe,
-                    allowlisted command list to try here.
-                </p>
+                @if (config('homie.demo_sandbox_ssh_private_key'))
+                    <p class="mt-1 text-sky-800/90 dark:text-sky-200/90">
+                        Output-type cards run a real shell command over SSH. The pre-seeded "Try: uptime"
+                        card already targets a locked-down sandbox machine built just for this demo — it
+                        can only ever run five fixed commands, nothing else, regardless of what's typed at
+                        it. Open Manage &rarr; Cards, add a card, set its type to "Output", and use the
+                        <strong>Demo sandbox</strong> machine with any of:
+                    </p>
+                    <dl class="mt-3 space-y-2">
+                        <div class="rounded-md bg-white/60 p-2 dark:bg-white/5">
+                            <dt class="font-semibold"><code>uptime</code></dt>
+                            <dd>How long the sandbox has been running</dd>
+                        </div>
+                        <div class="rounded-md bg-white/60 p-2 dark:bg-white/5">
+                            <dt class="font-semibold"><code>df -h</code></dt>
+                            <dd>Disk usage</dd>
+                        </div>
+                        <div class="rounded-md bg-white/60 p-2 dark:bg-white/5">
+                            <dt class="font-semibold"><code>date</code></dt>
+                            <dd>Current date/time on the sandbox</dd>
+                        </div>
+                        <div class="rounded-md bg-white/60 p-2 dark:bg-white/5">
+                            <dt class="font-semibold"><code>whoami</code></dt>
+                            <dd>The sandbox's own restricted user</dd>
+                        </div>
+                        <div class="rounded-md bg-white/60 p-2 dark:bg-white/5">
+                            <dt class="font-semibold"><code>echo &lt;text&gt;</code></dt>
+                            <dd>Echoes back whatever text you give it</dd>
+                        </div>
+                    </dl>
+                    <p class="mt-2 text-xs text-sky-700/80 dark:text-sky-300/80">
+                        Anything else — a different command, chaining with <code>;</code>/<code>&amp;&amp;</code>,
+                        an attempt at a real shell — is rejected outright by the sandbox itself, not just
+                        hidden by this UI. See <code>docker/ssh-sandbox/README.md</code> in the repo for the
+                        full threat model if you're curious how it's locked down.
+                    </p>
+                @else
+                    <p class="mt-1 text-sky-800/90 dark:text-sky-200/90">
+                        Output-type cards run a real shell command against a saved machine. This particular
+                        deployment doesn't have the sandboxed demo target configured, so there's no safe
+                        machine to point one at here — the feature still works, it just has nothing to
+                        demo against on this instance.
+                    </p>
+                @endif
             </div>
         </div>
     </div>

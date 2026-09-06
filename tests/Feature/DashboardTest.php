@@ -38,6 +38,29 @@ it('hides the demo info panel outside demo mode', function () {
         ->assertDontSee('This is a live demo');
 });
 
+it('shows the sandbox command list in the demo info panel when the sandbox key is configured', function () {
+    config([
+        'homie.demo_mode' => true,
+        'homie.demo_sandbox_ssh_private_key' => 'fake-key-contents',
+    ]);
+
+    Livewire::test('dashboard')
+        ->assertSee('Demo sandbox')
+        ->assertSee('uptime')
+        ->assertSee('whoami');
+});
+
+it('shows a fallback message instead of the sandbox command list when the sandbox key is not configured', function () {
+    config([
+        'homie.demo_mode' => true,
+        'homie.demo_sandbox_ssh_private_key' => null,
+    ]);
+
+    Livewire::test('dashboard')
+        ->assertDontSee('Demo sandbox')
+        ->assertSee('sandboxed demo target configured');
+});
+
 it('does not wrap api cards in a link while arranging', function () {
     $card = Card::factory()->create(['type' => CardType::Api, 'url' => 'http://sonarr.lan']);
     CardApi::factory()->create(['card_id' => $card->id, 'base_url' => 'http://sonarr.lan']);

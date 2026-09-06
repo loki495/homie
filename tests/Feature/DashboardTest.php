@@ -18,6 +18,26 @@ it('wraps api cards in a link to their url outside arrange mode', function () {
         ->assertSeeHtml('href="http://sonarr.lan"');
 });
 
+it('shows the demo info panel, with the mock api urls, in demo mode', function () {
+    config([
+        'homie.demo_mode' => true,
+        'homie.demo_mock_sonarr_url' => 'http://mock-sonarr',
+        'homie.demo_mock_radarr_url' => 'http://mock-radarr',
+    ]);
+
+    Livewire::test('dashboard')
+        ->assertSee('This is a live demo')
+        ->assertSee('http://mock-sonarr')
+        ->assertSee('http://mock-radarr');
+});
+
+it('hides the demo info panel outside demo mode', function () {
+    config(['homie.demo_mode' => false]);
+
+    Livewire::test('dashboard')
+        ->assertDontSee('This is a live demo');
+});
+
 it('does not wrap api cards in a link while arranging', function () {
     $card = Card::factory()->create(['type' => CardType::Api, 'url' => 'http://sonarr.lan']);
     CardApi::factory()->create(['card_id' => $card->id, 'base_url' => 'http://sonarr.lan']);

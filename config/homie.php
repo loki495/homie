@@ -35,4 +35,22 @@ return [
     'demo_db_storage_path' => env('DEMO_DB_STORAGE_PATH', storage_path('demo-dbs')),
     'demo_basic_auth_email' => env('DEMO_BASIC_AUTH_EMAIL', 'demo@homie.ac495.net'),
     'demo_basic_auth_password' => env('DEMO_BASIC_AUTH_PASSWORD', 'homie-demo'),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Demo mock arr-stack API
+    |--------------------------------------------------------------------------
+    |
+    | Demo mode only. Two small mock services (docker-compose.yml: mock-sonarr,
+    | mock-radarr - see docker/mock-arr-api/router.php) return canned, realistic-
+    | shaped JSON for the Sonarr/Radarr endpoints App\Support\ApiProviders\
+    | *Fetcher.php call, so a real API card pointed at one of them shows
+    | plausible stats via the app's unmodified fetcher code. Defaults assume
+    | the mock services are running as Docker Compose services named
+    | mock-sonarr/mock-radarr on the same default network as this app
+    | container - override if the demo stack's service names or ports differ.
+    |
+    */
+    'demo_mock_sonarr_url' => env('DEMO_MOCK_SONARR_URL', 'http://mock-sonarr'),
+    'demo_mock_radarr_url' => env('DEMO_MOCK_RADARR_URL', 'http://mock-radarr'),
 ];

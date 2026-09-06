@@ -67,3 +67,38 @@ services:
       start_period: 20s
     volumes:
       - ./:/var/www/html
+
+  # Demo mode only (config('homie.demo_mode')) — never started by a plain `docker
+  # compose up`, same profile-gating pattern as app-test above. Two small mock
+  # arr-stack API services (same PHP built-in server, different MOCK_PROVIDER)
+  # so a real API card pointed at them shows plausible Sonarr/Radarr-shaped stats
+  # via the app's real, unmodified fetcher code — see docker/mock-arr-api/router.php
+  # and config/homie.php's demo_mock_sonarr_url/demo_mock_radarr_url. Reachable from
+  # `app` via this compose file's default network using the service name
+  # (mock-sonarr/mock-radarr) — the published host ports below are only for
+  # inspecting the mock servers directly, homie itself never uses them.
+  mock-sonarr:
+    container_name: homie-mock-sonarr
+    profiles: ["demo"]
+    image: php:8.3-cli-alpine
+    restart: unless-stopped
+    environment:
+      MOCK_PROVIDER: sonarr
+    volumes:
+      - ./docker/mock-arr-api:/mock:ro
+    command: ["php", "-S", "0.0.0.0:80", "-t", "/mock", "/mock/router.php"]
+    ports:
+      - "${DEMO_MOCK_SONARR_PORT:-8191}:80"
+
+  mock-radarr:
+    container_name: homie-mock-radarr
+    profiles: ["demo"]
+    image: php:8.3-cli-alpine
+    restart: unless-stopped
+    environment:
+      MOCK_PROVIDER: radarr
+    volumes:
+      - ./docker/mock-arr-api:/mock:ro
+    command: ["php", "-S", "0.0.0.0:80", "-t", "/mock", "/mock/router.php"]
+    ports:
+      - "${DEMO_MOCK_RADARR_PORT:-8192}:80"

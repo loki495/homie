@@ -151,6 +151,8 @@ new class extends Component
     @endphp
 
     <main class="mx-auto max-w-5xl space-y-6 p-4 sm:p-6">
+        <x-demo-info-panel />
+
         @if ($groups->isEmpty() && $ungroupedCards->isEmpty())
             <div class="rounded-lg border border-dashed border-slate-300 bg-white p-10 text-center dark:border-slate-600 dark:bg-slate-800">
                 <p class="text-sm font-semibold text-slate-700 dark:text-slate-200">No cards yet</p>

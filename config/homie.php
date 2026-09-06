@@ -53,4 +53,28 @@ return [
     */
     'demo_mock_sonarr_url' => env('DEMO_MOCK_SONARR_URL', 'http://mock-sonarr'),
     'demo_mock_radarr_url' => env('DEMO_MOCK_RADARR_URL', 'http://mock-radarr'),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Demo output-card SSH sandbox
+    |--------------------------------------------------------------------------
+    |
+    | Demo mode only. A locked-down SSH target (docker-compose.yml:
+    | output-sandbox, forced-command-only - see docker/ssh-sandbox/README.md
+    | for the full threat model) for demo visitors to try the output-card
+    | feature safely. The private key is deliberately NOT given a default
+    | here or committed anywhere - it only ever exists in the deployed
+    | instance's own .env, generated once for that specific deployment.
+    | DemoDashboardSeeder skips seeding the corresponding Machine row
+    | entirely if this is unset, rather than seeding one with no way to
+    | actually connect. Stored base64-encoded in .env (DEMO_SANDBOX_SSH_PRIVATE_KEY)
+    | rather than as a raw multi-line PEM value, to sidestep .env multi-line
+    | parsing entirely rather than relying on it - decoded once here.
+    */
+    'demo_sandbox_host' => env('DEMO_SANDBOX_HOST', 'output-sandbox'),
+    'demo_sandbox_port' => env('DEMO_SANDBOX_PORT', 2222),
+    'demo_sandbox_ssh_user' => env('DEMO_SANDBOX_SSH_USER', 'sandbox'),
+    'demo_sandbox_ssh_private_key' => env('DEMO_SANDBOX_SSH_PRIVATE_KEY')
+        ? base64_decode((string) env('DEMO_SANDBOX_SSH_PRIVATE_KEY'))
+        : null,
 ];

@@ -6,10 +6,12 @@ namespace Database\Seeders;
 
 use App\Enums\ApiProvider;
 use App\Enums\CardType;
+use App\Enums\DiscoveryMethod;
 use App\Models\Card;
 use App\Models\Group;
 use App\Models\Machine;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Str;
 
 /**
  * Sample dashboard content for local development only. Never wired into the
@@ -93,6 +95,47 @@ class DemoDashboardSeeder extends Seeder
                 'base_url' => (string) config('homie.demo_mock_sonarr_url'),
                 'api_key' => 'demo-api-key',
             ]);
+
+            // Skipped (not just given a useless placeholder) if the private key
+            // was never configured for this deployment - see config/homie.php's
+            // "Demo output-card SSH sandbox" section for why it's never
+            // committed/defaulted. A visitor can't use the output-card feature
+            // hands-on without this, but the rest of demo mode still works fine.
+            if (config('homie.demo_sandbox_ssh_private_key')) {
+                $sandboxMachine = Machine::create([
+                    'name' => 'Demo sandbox',
+                    'host' => (string) config('homie.demo_sandbox_host'),
+                    'description' => 'Locked-down SSH target for trying the output-card feature - see docker/ssh-sandbox/README.md. Only uptime, df -h, date, whoami, and echo <text> are allowed.',
+                    'discovery_method' => DiscoveryMethod::Ssh,
+                    'ssh_user' => (string) config('homie.demo_sandbox_ssh_user'),
+                    'ssh_port' => (int) config('homie.demo_sandbox_port'),
+                    'ssh_private_key' => (string) config('homie.demo_sandbox_ssh_private_key'),
+                ]);
+
+                // Output cards run a raw shell command, not a structured
+                // "pick a machine" reference (see homie's CLAUDE.md, "Container
+                // / infra" - storage/ssh/ holds keys the user's own command text
+                // is expected to reference directly). MachineObserver already
+                // synced the key to storage/ssh/{slug} the moment the Machine
+                // above was created - same ssh options homie's own
+                // MachineDiscovery::sshCommand() uses, so this is exactly the
+                // pattern a real user would write by hand, not a shortcut.
+                $slug = Str::slug($sandboxMachine->name);
+                Card::create([
+                    'group_id' => $systemGroup->id,
+                    'name' => 'Try: uptime',
+                    'type' => CardType::Output,
+                    'sort_order' => 2,
+                ])->output()->create([
+                    'command' => sprintf(
+                        'ssh -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile=/dev/null -o ConnectTimeout=5 -i %s -p %d %s@%s uptime',
+                        escapeshellarg(config('homie.ssh_key_path')."/{$slug}"),
+                        (int) config('homie.demo_sandbox_port'),
+                        (string) config('homie.demo_sandbox_ssh_user'),
+                        (string) config('homie.demo_sandbox_host'),
+                    ),
+                ]);
+            }
         }
     }
 }

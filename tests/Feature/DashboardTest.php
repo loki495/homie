@@ -18,6 +18,49 @@ it('wraps api cards in a link to their url outside arrange mode', function () {
         ->assertSeeHtml('href="http://sonarr.lan"');
 });
 
+it('shows the demo info panel, with the mock api urls, in demo mode', function () {
+    config([
+        'homie.demo_mode' => true,
+        'homie.demo_mock_sonarr_url' => 'http://mock-sonarr',
+        'homie.demo_mock_radarr_url' => 'http://mock-radarr',
+    ]);
+
+    Livewire::test('dashboard')
+        ->assertSee('This is a live demo')
+        ->assertSee('http://mock-sonarr')
+        ->assertSee('http://mock-radarr');
+});
+
+it('hides the demo info panel outside demo mode', function () {
+    config(['homie.demo_mode' => false]);
+
+    Livewire::test('dashboard')
+        ->assertDontSee('This is a live demo');
+});
+
+it('shows the sandbox command list in the demo info panel when the sandbox key is configured', function () {
+    config([
+        'homie.demo_mode' => true,
+        'homie.demo_sandbox_ssh_private_key' => 'fake-key-contents',
+    ]);
+
+    Livewire::test('dashboard')
+        ->assertSee('Demo sandbox')
+        ->assertSee('uptime')
+        ->assertSee('whoami');
+});
+
+it('shows a fallback message instead of the sandbox command list when the sandbox key is not configured', function () {
+    config([
+        'homie.demo_mode' => true,
+        'homie.demo_sandbox_ssh_private_key' => null,
+    ]);
+
+    Livewire::test('dashboard')
+        ->assertDontSee('Demo sandbox')
+        ->assertSee('sandboxed demo target configured');
+});
+
 it('does not wrap api cards in a link while arranging', function () {
     $card = Card::factory()->create(['type' => CardType::Api, 'url' => 'http://sonarr.lan']);
     CardApi::factory()->create(['card_id' => $card->id, 'base_url' => 'http://sonarr.lan']);

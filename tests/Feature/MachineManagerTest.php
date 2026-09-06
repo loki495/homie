@@ -472,3 +472,42 @@ it('writes a temporary identity file for the scan and cleans it up afterwards', 
 
     expect(glob(sys_get_temp_dir().'/homie-ssh-*'))->toBeEmpty();
 });
+
+it('returns a canned discovery result in demo mode instead of a real scan', function () {
+    config([
+        'homie.demo_mode' => true,
+        'homie.demo_mock_sonarr_url' => 'http://mock-sonarr',
+        'homie.demo_mock_radarr_url' => 'http://mock-radarr',
+    ]);
+
+    Http::fake();
+    Http::preventStrayRequests();
+    Process::fake();
+    Process::preventStrayProcesses();
+
+    $machine = Machine::factory()->create(['host' => 'nas.lan']);
+
+    $component = Livewire::test('machine-manager')->call('discover', $machine->id);
+
+    expect($component->get('discovered'))->toBe([
+        ['name' => 'sonarr', 'image' => 'linuxserver/sonarr', 'url' => 'http://mock-sonarr'],
+        ['name' => 'radarr', 'image' => 'linuxserver/radarr', 'url' => 'http://mock-radarr'],
+    ])->and($component->get('scanError'))->toBeNull();
+
+    Http::assertNothingSent();
+    Process::assertNothingRan();
+});
+
+it('takes the demo-mode discovery branch even for an ssh-configured machine, never shelling out', function () {
+    config(['homie.demo_mode' => true]);
+
+    Process::fake();
+    Process::preventStrayProcesses();
+
+    $machine = Machine::factory()->ssh()->create(['host' => '192.168.1.12']);
+
+    $component = Livewire::test('machine-manager')->call('discover', $machine->id);
+
+    expect($component->get('discovered'))->toHaveCount(2);
+    Process::assertNothingRan();
+});

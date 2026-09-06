@@ -1,0 +1,36 @@
+# Hardened sshd config for the homie demo output-card sandbox. This is the
+# ONLY thing a public demo visitor can reach via SSH - see README.md in this
+# directory for the full threat model. Every restriction here is deliberate;
+# don't loosen any of it without re-reading that README first.
+
+Port 2222
+ListenAddress 0.0.0.0
+
+# Key-only, one user, no root, no interactive shell of any kind - the
+# per-key `command=` forced-command in authorized_keys is what actually runs
+# (see allowed-command.sh), never a real shell.
+PermitRootLogin no
+PasswordAuthentication no
+KbdInteractiveAuthentication no
+PubkeyAuthentication yes
+AllowUsers sandbox
+MaxAuthTries 3
+MaxSessions 4
+LoginGraceTime 10
+
+# No forwarding, no tunneling, no agent, no PTY - belt and suspenders on top
+# of the same restrictions already set per-key in authorized_keys.
+AllowTcpForwarding no
+AllowStreamLocalForwarding no
+GatewayPorts no
+PermitTunnel no
+X11Forwarding no
+AllowAgentForwarding no
+PermitTTY no
+PrintMotd no
+
+# UsePAM/PrintLastLog omitted deliberately - this Alpine sshd build has no
+# PAM support compiled in and rejects both as unsupported directives (a
+# startup warning, not fatal, but worth not carrying dead config).
+StrictModes yes
+Subsystem sftp /bin/false

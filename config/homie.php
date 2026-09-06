@@ -35,4 +35,46 @@ return [
     'demo_db_storage_path' => env('DEMO_DB_STORAGE_PATH', storage_path('demo-dbs')),
     'demo_basic_auth_email' => env('DEMO_BASIC_AUTH_EMAIL', 'demo@homie.ac495.net'),
     'demo_basic_auth_password' => env('DEMO_BASIC_AUTH_PASSWORD', 'homie-demo'),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Demo mock arr-stack API
+    |--------------------------------------------------------------------------
+    |
+    | Demo mode only. Two small mock services (docker-compose.yml: mock-sonarr,
+    | mock-radarr - see docker/mock-arr-api/router.php) return canned, realistic-
+    | shaped JSON for the Sonarr/Radarr endpoints App\Support\ApiProviders\
+    | *Fetcher.php call, so a real API card pointed at one of them shows
+    | plausible stats via the app's unmodified fetcher code. Defaults assume
+    | the mock services are running as Docker Compose services named
+    | mock-sonarr/mock-radarr on the same default network as this app
+    | container - override if the demo stack's service names or ports differ.
+    |
+    */
+    'demo_mock_sonarr_url' => env('DEMO_MOCK_SONARR_URL', 'http://mock-sonarr'),
+    'demo_mock_radarr_url' => env('DEMO_MOCK_RADARR_URL', 'http://mock-radarr'),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Demo output-card SSH sandbox
+    |--------------------------------------------------------------------------
+    |
+    | Demo mode only. A locked-down SSH target (docker-compose.yml:
+    | output-sandbox, forced-command-only - see docker/ssh-sandbox/README.md
+    | for the full threat model) for demo visitors to try the output-card
+    | feature safely. The private key is deliberately NOT given a default
+    | here or committed anywhere - it only ever exists in the deployed
+    | instance's own .env, generated once for that specific deployment.
+    | DemoDashboardSeeder skips seeding the corresponding Machine row
+    | entirely if this is unset, rather than seeding one with no way to
+    | actually connect. Stored base64-encoded in .env (DEMO_SANDBOX_SSH_PRIVATE_KEY)
+    | rather than as a raw multi-line PEM value, to sidestep .env multi-line
+    | parsing entirely rather than relying on it - decoded once here.
+    */
+    'demo_sandbox_host' => env('DEMO_SANDBOX_HOST', 'output-sandbox'),
+    'demo_sandbox_port' => env('DEMO_SANDBOX_PORT', 2222),
+    'demo_sandbox_ssh_user' => env('DEMO_SANDBOX_SSH_USER', 'sandbox'),
+    'demo_sandbox_ssh_private_key' => env('DEMO_SANDBOX_SSH_PRIVATE_KEY')
+        ? base64_decode((string) env('DEMO_SANDBOX_SSH_PRIVATE_KEY'))
+        : null,
 ];

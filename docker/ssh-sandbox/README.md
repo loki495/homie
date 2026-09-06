@@ -148,7 +148,27 @@ configuration, not just the unrestricted build from earlier in this file.
   cleanup before the Machine-row wiring happened) and re-verified against
   the exact final `cap_drop`/`cap_add` configuration - every test in this
   file passed against the actual keypair now committed here.
-- **Not yet done**: wiring the private key into a seeded `Machine` row (the
-  actual "try it in the UI" step) - the private key itself is being held
-  for that follow-up, not committed anywhere.
-- Not yet deployed to media.
+- Deployed to media (`homie-output-sandbox`), reachable at
+  `sandbox@192.168.1.6:2222` from outside media.
+- `DemoDashboardSeeder` now seeds a "Demo sandbox" `Machine` row plus a
+  "Try: uptime" output card when `DEMO_SANDBOX_SSH_PRIVATE_KEY` is set (see
+  `config/homie.php`'s "Demo output-card SSH sandbox" section) - skipped
+  entirely otherwise. Covered by
+  `tests/Feature/DemoDashboardSeederTest.php`.
+- **Real gotcha found running this for real, not just in tests**: run
+  `demo:build-template` as `www-data`
+  (`docker exec -u www-data ... php artisan demo:build-template`), never as
+  root. `MachineObserver` syncs the private key to `storage/ssh/{slug}`
+  owned by whichever user ran the command - if that's root (the default for
+  a bare `docker exec`, and the easy mistake to make), the file ends up
+  `root:root`, unreadable by the `www-data` Apache workers that actually run
+  output-card commands on a real request. Reproduced directly: the exact
+  seeded `ssh` command returned `Permission denied` as `www-data` after a
+  root-run seed, then succeeded once re-seeded as `www-data` (matching the
+  `-u www-data` convention this project already uses for every other
+  artisan/composer command - see this repo's `CLAUDE.md`, "Container /
+  infra").
+- End-to-end verified (not just unit tests): `demo:build-template` run
+  against media's live sandbox, then the exact seeded command executed via
+  `Illuminate\Support\Facades\Process::run()` as `www-data` - real `uptime`
+  output came back, exit code 0.

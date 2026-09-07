@@ -469,6 +469,22 @@ resolved before the auth check queries it):
   (same mechanism as Laravel's built-in `auth.basic` middleware) against one shared
   demo `User` row seeded into the template itself, so every visitor's copy already has
   it. Homie ships with no login of its own otherwise.
+  - **Two opt-in bypasses for the deployment's own owner**, both default off:
+    `demo_trust_lan` (`DEMO_TRUST_LAN`) skips Basic Auth for any request that
+    reached the app without passing through Cloudflare at all (no
+    `CF-Connecting-IP`/`CF-Ray` header) — only enable this once you've confirmed
+    nothing but Cloudflare and your own LAN can reach the app directly (no
+    public port-forward), since that's the only thing making "didn't come
+    through Cloudflare" mean "came from the LAN." `demo_owner_email`
+    (`DEMO_OWNER_EMAIL`) skips it when Cloudflare Access itself has asserted
+    that identity via `Cf-Access-Authenticated-User-Email` — safe against
+    spoofing because Cloudflare strips any client-supplied copy of that header
+    at the edge, but it only ever fires if the hostname's Access policy
+    actually asserts identity (a plain "bypass" policy, like the one currently
+    used for the public demo hostnames, never sets it). Deliberately does not
+    use `$request->ip()`/`X-Forwarded-For` for either check — see "Embedding in
+    an iframe, and why there is no CSRF exemption" above for the exact
+    vulnerability class that ruled that out.
 
 `demo:build-template` (manual/on-demand only, never scheduled — homie's demo data
 isn't date-sensitive) migrates + seeds `DemoDashboardSeeder` into the template file and

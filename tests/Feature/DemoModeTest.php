@@ -89,6 +89,64 @@ it('blocks the demo site behind Basic Auth with no credentials', function () {
     $this->get('/')->assertStatus(401);
 });
 
+it('still blocks a request with no Cloudflare headers when demo_trust_lan is off (default)', function () {
+    config(['homie.demo_trust_lan' => false]);
+
+    $this->get('/')->assertStatus(401);
+});
+
+it('skips Basic Auth for a request with no Cloudflare headers when demo_trust_lan is on', function () {
+    /** @var TestCase $this */
+    $this->withoutVite();
+    config(['homie.demo_trust_lan' => true]);
+
+    $this->call('GET', '/', server: ['REMOTE_ADDR' => '192.168.1.50'])->assertStatus(200);
+});
+
+it('does not skip Basic Auth via demo_trust_lan for a non-private client IP even with no Cloudflare headers', function () {
+    /** @var TestCase $this */
+    config(['homie.demo_trust_lan' => true]);
+
+    $this->call('GET', '/', server: ['REMOTE_ADDR' => '8.8.8.8'])->assertStatus(401);
+});
+
+it('does not skip Basic Auth via demo_trust_lan for a request that went through Cloudflare', function () {
+    config(['homie.demo_trust_lan' => true]);
+
+    $this->withHeaders(['CF-Connecting-IP' => '1.2.3.4'])
+        ->get('/')
+        ->assertStatus(401);
+});
+
+it('skips Basic Auth when Cloudflare Access asserts the configured owner email', function () {
+    /** @var TestCase $this */
+    $this->withoutVite();
+    config(['homie.demo_owner_email' => 'owner@example.com']);
+
+    $this->withHeaders([
+        'CF-Connecting-IP' => '1.2.3.4',
+        'Cf-Access-Authenticated-User-Email' => 'owner@example.com',
+    ])->get('/')->assertStatus(200);
+});
+
+it('does not skip Basic Auth when the asserted Cloudflare identity does not match the owner email', function () {
+    config(['homie.demo_owner_email' => 'owner@example.com']);
+
+    $this->withHeaders([
+        'CF-Connecting-IP' => '1.2.3.4',
+        'Cf-Access-Authenticated-User-Email' => 'someone-else@example.com',
+    ])->get('/')->assertStatus(401);
+});
+
+it('does not skip Basic Auth from a client-supplied Cloudflare identity header when no owner email is configured', function () {
+    config(['homie.demo_owner_email' => null]);
+
+    $this->withHeaders([
+        'CF-Connecting-IP' => '1.2.3.4',
+        'Cf-Access-Authenticated-User-Email' => 'anyone@example.com',
+    ])->get('/')->assertStatus(401);
+});
+
 it('rejects the wrong password', function () {
     $this->withHeaders(['Authorization' => 'Basic '.base64_encode('demo@example.com:wrong-password')])
         ->get('/')

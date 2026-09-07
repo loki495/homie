@@ -77,4 +77,19 @@ return [
     'demo_sandbox_ssh_private_key' => env('DEMO_SANDBOX_SSH_PRIVATE_KEY')
         ? base64_decode((string) env('DEMO_SANDBOX_SSH_PRIVATE_KEY'))
         : null,
+
+    /*
+    |--------------------------------------------------------------------------
+    | Demo Basic Auth bypass for trusted requests
+    |--------------------------------------------------------------------------
+    |
+    | Demo mode only. Lets the owner skip typing the demo's Basic Auth
+    | credentials from two trusted paths - see RequireBasicAuthInDemoMode for
+    | the actual checks and why each is safe against a spoofed request, not
+    | just convenient. Off (both null/false) by default; a normal clone of
+    | this repo never enables either.
+    |
+    */
+    'demo_owner_email' => env('DEMO_OWNER_EMAIL'),
+    'demo_trust_lan' => env('DEMO_TRUST_LAN', false),
 ];

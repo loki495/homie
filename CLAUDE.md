@@ -443,6 +443,63 @@ before, not less.
 affects the accuracy of the client IP in logs. Narrowing it to Traefik's actual
 container/network CIDR is still tidier, just no longer urgent.
 
+## Application auth
+
+Homie ships with a real login now (it used to have none — see the "Current
+limitations" history in README.md before this was added). `app/Http/Middleware/
+RequireAuthenticationUnlessDemoMode`, appended to the `web` group in
+`bootstrap/app.php` after the two demo-mode middlewares, requires an authenticated
+`web`-guard session for every route except `/login` and `/logout` — unless
+`config('homie.demo_mode')` is on, in which case it's a no-op and
+`RequireBasicAuthInDemoMode` gates access instead (see "Demo mode" below for why
+those two are kept separate rather than unified).
+
+**Single admin, not a user-management system.** Homie has no per-user data model —
+cards, groups, and machines aren't owned by anyone — so there is exactly one
+credential that matters, not an account system. `php artisan homie:make-admin`
+(`app/Console/Commands/MakeAdminUser.php`) creates or resets it: an
+`User::updateOrCreate(['email' => ...], [...])` upsert, so re-running it against the
+same email changes the password instead of creating a second row. No public
+registration route exists, and none should be added — this is deliberate, not an
+oversight, for the same reason a self-hosted single-admin app (Nextcloud-style
+first-run setup, not a SaaS signup flow) shouldn't let a stranger register into your
+home lab dashboard.
+
+**Why hand-rolled instead of Breeze/Fortify.** Both would bring registration,
+profile pages, and (for password reset) a mail dependency this single-admin app has
+no use for and doesn't otherwise assume (see "Design principle: this is a
+distributable app" below — no feature should assume infrastructure a fresh clone
+doesn't have). The login itself
+(`resources/views/components/⚡login.blade.php`) is a Livewire 4 SFC matching every
+other component's conventions — `#[Validate]` attributes, Flux `<flux:input>`/
+`<flux:checkbox>`/`<flux:button>` — using `Auth::attempt()` plus a hand-rolled
+`RateLimiter` lockout (5 attempts per email+IP per 60s, mirroring the shape of
+Laravel's own Fortify/Breeze throttle without the dependency) and
+`session()->regenerate()` on success. `session()->regenerate()` was used over
+`request()->session()->regenerate()` deliberately — the latter throws in a
+`Livewire::test()` component test (no real HTTP request/session ever gets attached
+to the container's `Request` instance outside a full HTTP-kernel dispatch), while
+`session()` resolves the session manager directly and works identically in both a
+real request and a direct component test.
+
+**Route-registration-time branching on `demo_mode` was considered and rejected** in
+favor of the per-request middleware check above. `config('homie.demo_mode')` is only
+read once if a route's middleware list is decided in `routes/web.php` at boot time —
+but the existing test suite (see `DemoModeTest.php`) already relies on toggling
+`config(['homie.demo_mode' => true])` at runtime *within* a test, same connection-
+purge pattern `ResolveDemoDatabase` uses. A boot-time branch would silently stop
+reacting to that, both in tests and in the (theoretical) case of `.env` changing
+between requests without a full restart — checking config inside the middleware's
+`handle()`, exactly like `ResolveDemoDatabase`/`RequireBasicAuthInDemoMode` already
+do, was the only option consistent with that existing pattern.
+
+Tests: `tests/Feature/AuthenticationTest.php` (login/logout, the redirect-when-guest
+and redirect-when-already-authenticated cases, rate limiting, and the demo-mode
+no-op) and `tests/Feature/Console/MakeAdminUserTest.php` (create, upsert-resets-
+password, and both validation sad paths). `tests/Feature/HomeTest.php` and
+`tests/Browser/DashboardTest.php` now `actingAs()` a factory user before hitting `/`,
+same as any other auth-gated route would need.
+
 ## Demo mode
 
 `config('homie.demo_mode')` (env `DEMO_MODE`, off by default) lets the exact same image
@@ -468,7 +525,9 @@ resolved before the auth check queries it):
 - **`RequireBasicAuthInDemoMode`** — wraps the guard's own `basic('email')` call
   (same mechanism as Laravel's built-in `auth.basic` middleware) against one shared
   demo `User` row seeded into the template itself, so every visitor's copy already has
-  it. Homie ships with no login of its own otherwise.
+  it. This is deliberately separate from the real session login (see "Application
+  auth" below) — a per-visitor session login has no onboarding flow demo mode would
+  want, so demo mode keeps its own simpler gate instead.
   - **Two opt-in bypasses for the deployment's own owner**, both default off:
     `demo_trust_lan` (`DEMO_TRUST_LAN`) skips Basic Auth for any request that
     reached the app without passing through Cloudflare at all (no

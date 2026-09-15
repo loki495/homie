@@ -3,6 +3,11 @@
 declare(strict_types=1);
 
 use App\Models\Card;
+use App\Models\User;
+
+beforeEach(function () {
+    $this->actingAs(User::factory()->create());
+});
 
 it('renders the dashboard in a real browser', function () {
     $page = visit('/');

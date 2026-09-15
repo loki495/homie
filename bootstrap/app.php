@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Http\Middleware\RequireAuthenticationUnlessDemoMode;
 use App\Http\Middleware\RequireBasicAuthInDemoMode;
 use App\Http\Middleware\ResolveDemoDatabase;
 use App\Http\Middleware\UseStaticAssetsForRemoteHost;
@@ -35,6 +36,10 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->appendToGroup('web', [
             ResolveDemoDatabase::class,
             RequireBasicAuthInDemoMode::class,
+            // Real session login, everywhere except demo mode - see the
+            // class docblock for why this can't just be a `->middleware('auth')`
+            // on the route itself.
+            RequireAuthenticationUnlessDemoMode::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

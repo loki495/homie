@@ -142,6 +142,17 @@ new class extends Component
             >
                 Manage
             </button>
+            @if (! config('homie.demo_mode') && auth()->check())
+                <form method="POST" action="{{ route('logout') }}">
+                    @csrf
+                    <button
+                        type="submit"
+                        class="rounded-md bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-600 dark:bg-slate-700 dark:text-slate-200"
+                    >
+                        Log out
+                    </button>
+                </form>
+            @endif
         </div>
     </header>
 

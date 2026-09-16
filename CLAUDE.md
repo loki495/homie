@@ -447,12 +447,13 @@ container/network CIDR is still tidier, just no longer urgent.
 
 Homie ships with a real login now (it used to have none — see the "Current
 limitations" history in README.md before this was added). `app/Http/Middleware/
-RequireAuthenticationUnlessDemoMode`, appended to the `web` group in
-`bootstrap/app.php` after the two demo-mode middlewares, requires an authenticated
-`web`-guard session for every route except `/login` and `/logout` — unless
-`config('homie.demo_mode')` is on, in which case it's a no-op and
-`RequireBasicAuthInDemoMode` gates access instead (see "Demo mode" below for why
-those two are kept separate rather than unified).
+RequireAuthentication`, appended to the `web` group in `bootstrap/app.php` after
+`ResolveDemoDatabase`, requires an authenticated `web`-guard session for every route
+except `/login` and `/logout` — unconditionally, including demo mode. Demo mode used
+to gate access with a separate mechanism (HTTP Basic Auth); it was switched to reuse
+this same login instead, against a shared admin credential seeded into every visitor's
+own per-visitor database copy — see "Demo mode" below for the full reasoning and the
+history of what this replaced.
 
 **Single admin, not a user-management system.** Homie has no per-user data model —
 cards, groups, and machines aren't owned by anyone — so there is exactly one
@@ -482,23 +483,15 @@ to the container's `Request` instance outside a full HTTP-kernel dispatch), whil
 `session()` resolves the session manager directly and works identically in both a
 real request and a direct component test.
 
-**Route-registration-time branching on `demo_mode` was considered and rejected** in
-favor of the per-request middleware check above. `config('homie.demo_mode')` is only
-read once if a route's middleware list is decided in `routes/web.php` at boot time —
-but the existing test suite (see `DemoModeTest.php`) already relies on toggling
-`config(['homie.demo_mode' => true])` at runtime *within* a test, same connection-
-purge pattern `ResolveDemoDatabase` uses. A boot-time branch would silently stop
-reacting to that, both in tests and in the (theoretical) case of `.env` changing
-between requests without a full restart — checking config inside the middleware's
-`handle()`, exactly like `ResolveDemoDatabase`/`RequireBasicAuthInDemoMode` already
-do, was the only option consistent with that existing pattern.
-
 Tests: `tests/Feature/AuthenticationTest.php` (login/logout, the redirect-when-guest
-and redirect-when-already-authenticated cases, rate limiting, and the demo-mode
-no-op) and `tests/Feature/Console/MakeAdminUserTest.php` (create, upsert-resets-
-password, and both validation sad paths). `tests/Feature/HomeTest.php` and
-`tests/Browser/DashboardTest.php` now `actingAs()` a factory user before hitting `/`,
-same as any other auth-gated route would need.
+and redirect-when-already-authenticated cases, rate limiting, and confirming the login
+page never prefills credentials outside demo mode) and
+`tests/Feature/Console/MakeAdminUserTest.php` (create, upsert-resets-password, both
+validation sad paths, and the demo-mode non-interactive shortcut). `tests/Feature/
+HomeTest.php` and `tests/Browser/DashboardTest.php` now `actingAs()` a factory user
+before hitting `/`, same as any other auth-gated route would need. Demo-mode-specific
+coverage (login using the shared credentials, per-visitor isolation still holding) is
+in `tests/Feature/DemoModeTest.php`, not duplicated here.
 
 ## Demo mode
 
@@ -506,9 +499,10 @@ same as any other auth-gated route would need.
 serve a public, credential-gated demo in addition to normal dev/production use — see
 the (external, outside this repo) plan at
 `.ai/plans/2026-09-06-demo-sites-and-cd/PLAN.md` in the `www` workspace root for the
-full recruiter-demo/CD rationale. Two middlewares, both no-ops unless demo mode is on,
-appended to the `web` group in `bootstrap/app.php` (order matters — the DB must be
-resolved before the auth check queries it):
+full recruiter-demo/CD rationale. One middleware, a no-op unless demo mode is on,
+appended to the `web` group in `bootstrap/app.php` before `RequireAuthentication` (order
+matters — the DB must be resolved to the visitor's own copy before the login check
+queries the `users` table in it):
 
 - **`ResolveDemoDatabase`** — homie has no per-user data model at all, so concurrent
   public visitors would otherwise share and stomp on one literal database. Each visitor
@@ -522,32 +516,44 @@ resolved before the auth check queries it):
   or — the case that actually surfaced this — Laravel's own testing framework
   pre-resolving it via `RefreshDatabase`), so every later query would keep hitting
   whatever database it originally connected to instead of the visitor's copy.
-- **`RequireBasicAuthInDemoMode`** — wraps the guard's own `basic('email')` call
-  (same mechanism as Laravel's built-in `auth.basic` middleware) against one shared
-  demo `User` row seeded into the template itself, so every visitor's copy already has
-  it. This is deliberately separate from the real session login (see "Application
-  auth" below) — a per-visitor session login has no onboarding flow demo mode would
-  want, so demo mode keeps its own simpler gate instead.
-  - **Two opt-in bypasses for the deployment's own owner**, both default off:
-    `demo_trust_lan` (`DEMO_TRUST_LAN`) skips Basic Auth for any request that
-    reached the app without passing through Cloudflare at all (no
-    `CF-Connecting-IP`/`CF-Ray` header) — only enable this once you've confirmed
-    nothing but Cloudflare and your own LAN can reach the app directly (no
-    public port-forward), since that's the only thing making "didn't come
-    through Cloudflare" mean "came from the LAN." `demo_owner_email`
-    (`DEMO_OWNER_EMAIL`) skips it when Cloudflare Access itself has asserted
-    that identity via `Cf-Access-Authenticated-User-Email` — safe against
-    spoofing because Cloudflare strips any client-supplied copy of that header
-    at the edge, but it only ever fires if the hostname's Access policy
-    actually asserts identity (a plain "bypass" policy, like the one currently
-    used for the public demo hostnames, never sets it). Deliberately does not
-    use `$request->ip()`/`X-Forwarded-For` for either check — see "Embedding in
-    an iframe, and why there is no CSRF exemption" above for the exact
-    vulnerability class that ruled that out.
 
-`demo:build-template` (manual/on-demand only, never scheduled — homie's demo data
-isn't date-sensitive) migrates + seeds `DemoDashboardSeeder` into the template file and
-creates that one demo user. `demo:cleanup {--hours=24}` (scheduled daily, gated by
+Demo mode used to gate access with its own separate mechanism
+(`RequireBasicAuthInDemoMode`, an HTTP Basic Auth wrapper with owner bypasses for
+Cloudflare-Access/LAN requests — since removed). It now goes through the exact same
+`RequireAuthentication` middleware and login page as any other deployment (see
+"Application auth" above), against a shared admin user already seeded into every
+visitor's own per-visitor copy — no extra plumbing needed since that row lives in the
+template `ResolveDemoDatabase` copies. Switched deliberately: a recruiter/visitor
+clicking through to the demo now sees the actual login feature being demonstrated,
+rather than a generic browser Basic Auth popup for a feature the audit specifically
+flagged as the thing to build. The owner bypass was dropped along with it — the demo
+site has no special-cased access for its own owner anymore, everyone goes through the
+same login.
+
+- **`config('homie.demo_admin_email')`/`demo_admin_password`** (env
+  `DEMO_ADMIN_EMAIL`/`DEMO_ADMIN_PASSWORD`) — the one shared credential, seeded by
+  `BuildDemoTemplate` via `Artisan::call('homie:make-admin')` with no arguments.
+- **`MakeAdminUser` (`homie:make-admin`) has a demo-mode shortcut** — called bare (no
+  `--email`/`--password`), it detects `config('homie.demo_mode')` and provisions the
+  shared demo credentials non-interactively instead of prompting, since there's no
+  terminal attached when `BuildDemoTemplate` runs it from `docker/entrypoint-prod.sh`
+  on every boot. Passing either option explicitly still overrides this — a self-hoster
+  running with demo mode on can still set their own credentials.
+- **`docker-compose.prod.yml` hardcodes `DEMO_MODE: "true"`** on both the `app` and
+  `scheduler` services (`environment:`, which overrides whatever `env_file: .env` sets
+  for the same key) — this compose file only ever runs the demo deployment (see its own
+  top comment), so a missing/wrong `DEMO_MODE` in the host's `.env` can no longer
+  silently boot it as an unisolated single-database instance with no admin bootstrap
+  path at all. The login page itself also displays and pre-fills the shared credentials
+  when `config('homie.demo_mode')` is on (`⚡login.blade.php`'s `mount()`) — a demo
+  visitor's goal is to see the dashboard, not go hunting for a password first, and
+  these credentials are meant to be public.
+
+`demo:build-template` (never scheduled — homie's demo data isn't date-sensitive, unlike
+insights' equivalent — but run on every container boot by
+`docker/entrypoint-prod.sh` when demo mode is on) migrates fresh, seeds
+`DemoDashboardSeeder`, and provisions the shared admin login via `homie:make-admin`.
+`demo:cleanup {--hours=24}` (scheduled daily, gated by
 `->when(fn () => config('homie.demo_mode'))` so it's a no-op otherwise — see
 `routes/console.php`) deletes stale per-visitor files; the template itself is never
 regenerated by it.
@@ -585,7 +591,8 @@ mirror, so work happens directly on `main`. Repo: `loki495/homie` on GitHub (pub
 
 ## Testing
 
-172 Pest tests (Feature + Unit) as of this writing, covering happy *and* sad paths for
+199 Pest tests (Feature + Unit, plus 4 more in the separate browser suite) as of this
+writing, covering happy *and* sad paths for
 essentially every Livewire component and support class — cards, groups, machines,
 discovery (Docker API + SSH, including the host-network/Traefik-label edge cases),
 backup import/export, icon search, CSRF/middleware, and every `ApiProvider` fetcher

@@ -17,6 +17,12 @@ it('lets an authenticated user reach the dashboard', function () {
     $this->get('/')->assertOk();
 });
 
+it('does not prefill any credentials on the login page outside demo mode', function () {
+    Livewire::test('login')
+        ->assertSet('email', '')
+        ->assertSet('password', '');
+});
+
 it('redirects an already-authenticated user away from the login page', function () {
     $this->actingAs(User::factory()->create());
 
@@ -92,15 +98,4 @@ it('logs an authenticated user out', function () {
     $this->post('/logout')->assertRedirect(route('login'));
 
     $this->assertGuest();
-});
-
-it('does not redirect to the login page when demo mode is on', function () {
-    config(['homie.demo_mode' => true]);
-
-    // Demo mode is gated by RequireBasicAuthInDemoMode instead, which is
-    // exercised by DemoModeTest.php — this only asserts the new auth
-    // middleware itself doesn't redirect to /login while demo mode is on.
-    $response = $this->get('/');
-
-    expect($response->getStatusCode())->not->toBe(302);
 });

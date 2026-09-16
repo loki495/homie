@@ -55,3 +55,36 @@ it('fails validation for a too-short password without creating a user', function
     expect($exitCode)->toBe(1)
         ->and(User::query()->count())->toBe(0);
 });
+
+it('provisions the shared demo credentials non-interactively when called bare in demo mode', function () {
+    config([
+        'homie.demo_mode' => true,
+        'homie.demo_admin_email' => 'demo@example.com',
+        'homie.demo_admin_password' => 'demo-password',
+    ]);
+
+    $exitCode = Artisan::call('homie:make-admin');
+
+    expect($exitCode)->toBe(0);
+
+    $user = User::query()->where('email', 'demo@example.com')->firstOrFail();
+
+    expect($user->name)->toBe('Demo')
+        ->and(Hash::check('demo-password', $user->password))->toBeTrue();
+});
+
+it('still lets an explicit --email/--password override the demo shortcut in demo mode', function () {
+    config([
+        'homie.demo_mode' => true,
+        'homie.demo_admin_email' => 'demo@example.com',
+        'homie.demo_admin_password' => 'demo-password',
+    ]);
+
+    Artisan::call('homie:make-admin', [
+        '--email' => 'custom@example.com',
+        '--password' => 'a-custom-password',
+    ]);
+
+    expect(User::query()->where('email', 'demo@example.com')->exists())->toBeFalse()
+        ->and(User::query()->where('email', 'custom@example.com')->exists())->toBeTrue();
+});

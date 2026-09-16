@@ -2,8 +2,7 @@
 
 declare(strict_types=1);
 
-use App\Http\Middleware\RequireAuthenticationUnlessDemoMode;
-use App\Http\Middleware\RequireBasicAuthInDemoMode;
+use App\Http\Middleware\RequireAuthentication;
 use App\Http\Middleware\ResolveDemoDatabase;
 use App\Http\Middleware\UseStaticAssetsForRemoteHost;
 use Illuminate\Foundation\Application;
@@ -30,17 +29,30 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->prependToGroup('web', UseStaticAssetsForRemoteHost::class);
 
-        // Demo mode only (config('homie.demo_mode')) - no-op otherwise. Order
-        // matters: the database must be resolved to the current visitor's own
-        // copy before the Basic Auth check queries the users table.
-        $middleware->appendToGroup('web', [
-            ResolveDemoDatabase::class,
-            RequireBasicAuthInDemoMode::class,
-            // Real session login, everywhere except demo mode - see the
-            // class docblock for why this can't just be a `->middleware('auth')`
-            // on the route itself.
-            RequireAuthenticationUnlessDemoMode::class,
-        ]);
+        // ResolveDemoDatabase must run before Laravel's own StartSession -
+        // not just before RequireAuthentication's users-table query. Found
+        // live: appending it (running after StartSession) let the session
+        // handler resolve and cache its own DB connection reference against
+        // whatever 'sqlite' pointed at *before* the per-visitor repoint;
+        // DB::purge('sqlite') later in the same request doesn't reach that
+        // already-grabbed reference, so the session got saved against the
+        // wrong database entirely - login "succeeded" in-request (Auth::
+        // attempt() and everything after it used the correctly-repointed
+        // connection) but the persisted session never carried the auth state
+        // to the next request, bouncing straight back to /login. Prepending
+        // puts it ahead of EncryptCookies/StartSession/etc. in the 'web'
+        // group, so the session handler is constructed against the correct
+        // connection from the start - no purge-timing race at all. Caught
+        // live in a real browser, not by the test suite: Livewire::test()
+        // bypasses the HTTP middleware pipeline entirely, so it can't
+        // reproduce an ordering bug between two middlewares - see
+        // tests/Browser/AuthenticationTest.php for the browser-level test
+        // this added to actually catch it.
+        $middleware->prependToGroup('web', ResolveDemoDatabase::class);
+
+        // RequireAuthentication needs Auth::guard()->check(), which needs the
+        // session already started - stays appended (after StartSession).
+        $middleware->appendToGroup('web', RequireAuthentication::class);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(

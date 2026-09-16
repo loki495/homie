@@ -95,10 +95,11 @@ real dashboard fills in with whatever services you configure.
   cards/groups/machines aren't owned by anyone — so Breeze/Fortify-style registration,
   profile management, and password-reset-by-email would all be scaffolding for
   something the app can't actually use. Auth is one Livewire login form against the
-  `web` session guard, gated by `app/Http/Middleware/RequireAuthenticationUnlessDemoMode`
-  (a no-op in demo mode, which already gates access a different way — a shared Basic
-  Auth user, since a real login makes no sense for anonymous public visitors), plus
+  `web` session guard, gated by `app/Http/Middleware/RequireAuthentication`, plus
   `php artisan homie:make-admin` to create or reset the one credential that matters.
+  The public demo deployment goes through this exact same login rather than a
+  separate mechanism — its shared, publicly-known credentials are provisioned
+  automatically and pre-filled on the login page itself.
 - **Fixing the cause instead of the symptom, for CSRF inside an iframe.** This dashboard
   is meant to be embeddable (e.g. in a Home Assistant dashboard), a different-origin
   iframe — which meant no session cookie under the default `SameSite=Lax`, hence no CSRF

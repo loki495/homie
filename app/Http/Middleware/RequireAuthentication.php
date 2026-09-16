@@ -11,16 +11,16 @@ use Livewire\Livewire;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * Gates every route except /login behind a real session login, unless demo
- * mode is on - demo mode already gates the whole app behind
- * RequireBasicAuthInDemoMode instead (a single shared Basic Auth user, since
- * per-visitor session login would need its own onboarding flow demo mode has
- * no use for). Checks config('homie.demo_mode') per-request, same convention
- * as ResolveDemoDatabase/RequireBasicAuthInDemoMode, so the same test suite
- * pattern of toggling config() at runtime works here too - a route-
- * registration-time branch in routes/web.php would bake in whatever
- * demo_mode was at boot and never react to a test (or a real deployment)
- * flipping it later in the same process.
+ * Gates every route except /login behind a real session login - including
+ * demo mode, which uses the exact same login page against a shared admin
+ * user seeded into the demo template itself (see BuildDemoTemplate), rather
+ * than a separate mechanism. Demo mode used to gate access with HTTP Basic
+ * Auth instead (RequireBasicAuthInDemoMode, since removed) - switched to
+ * reusing this real login so the demo actually showcases the feature it's
+ * meant to prove exists, and because the per-visitor SQLite copy
+ * (ResolveDemoDatabase) already gives every visitor their own users table
+ * with that same shared row in it, so no extra plumbing was needed to make
+ * this work per-visitor.
  *
  * Must not redirect Livewire's own update requests (X-Livewire header) - that
  * endpoint shares the 'web' middleware group, so without this exemption the
@@ -33,17 +33,13 @@ use Symfony\Component\HttpFoundation\Response;
  * the login form itself) - there's no protected-component snapshot to forge
  * without having loaded an authenticated page first.
  */
-class RequireAuthenticationUnlessDemoMode
+class RequireAuthentication
 {
     /**
      * @param  Closure(Request): Response  $next
      */
     public function handle(Request $request, Closure $next): Response
     {
-        if (config('homie.demo_mode')) {
-            return $next($request);
-        }
-
         if ($request->routeIs('login', 'logout') || Livewire::isLivewireRequest()) {
             return $next($request);
         }

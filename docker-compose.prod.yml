@@ -18,6 +18,12 @@ services:
     restart: unless-stopped
     env_file:
       - .env
+    # This compose file only ever runs the demo deployment (see the top
+    # comment) - guaranteed here rather than left to .env, so a missing or
+    # wrong DEMO_MODE on the host can't accidentally boot it as a real,
+    # single-shared, unisolated instance with no admin bootstrap path.
+    environment:
+      DEMO_MODE: "true"
     ports:
       - "${APP_PORT:-8090}:80"
     networks:
@@ -43,6 +49,8 @@ services:
     restart: unless-stopped
     env_file:
       - .env
+    environment:
+      DEMO_MODE: "true"
     entrypoint: []
     command: php artisan schedule:work
     depends_on:

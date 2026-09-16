@@ -91,6 +91,15 @@ real dashboard fills in with whatever services you configure.
   first paint — but the icon and name are plain, already-loaded `Card` attributes, so they
   moved out into an eagerly-rendered Blade partial instead of sitting behind the same
   lazy boundary as the fetch itself.
+- **A single hand-rolled login, not a package.** Homie has no per-user data model —
+  cards/groups/machines aren't owned by anyone — so Breeze/Fortify-style registration,
+  profile management, and password-reset-by-email would all be scaffolding for
+  something the app can't actually use. Auth is one Livewire login form against the
+  `web` session guard, gated by `app/Http/Middleware/RequireAuthentication`, plus
+  `php artisan homie:make-admin` to create or reset the one credential that matters.
+  The public demo deployment goes through this exact same login rather than a
+  separate mechanism — its shared, publicly-known credentials are provisioned
+  automatically and pre-filled on the login page itself.
 - **Fixing the cause instead of the symptom, for CSRF inside an iframe.** This dashboard
   is meant to be embeddable (e.g. in a Home Assistant dashboard), a different-origin
   iframe — which meant no session cookie under the default `SameSite=Lax`, hence no CSRF
@@ -113,12 +122,19 @@ git clone https://github.com/loki495/homie.git
 cd homie
 docker compose up -d --build
 docker exec -u www-data homie-app composer setup   # composer install, .env, APP_KEY, migrate
+docker exec -u www-data homie-app php artisan homie:make-admin  # create your login
 docker compose run --rm vite npm install           # first time only
 docker compose run --rm vite npm run build
 ```
 
 Site: http://localhost:8090 (override the host port with `APP_PORT` in `.env` if
 8090 collides with something else already running)
+
+`homie:make-admin` prompts for an email and password (or accepts `--email`/
+`--password`/`--name` for a non-interactive setup) and is also how you reset the
+password later — it's an upsert by email, not a one-time bootstrap step. There's
+exactly one login for the whole dashboard; homie has no per-user data model, so a
+full user-management system would be scaffolding nothing here actually needs.
 
 #### If you run this behind Traefik
 
@@ -145,8 +161,9 @@ remote access.
 
 `.env.example` ships with `APP_DEBUG=false` — flip it to `true` locally if you want
 Laravel's debug error pages while developing, but leave it off anywhere the dashboard
-stays running day-to-day: this app has no login of any kind, so a debug page (full
-stack trace, file paths, query bindings) would be visible to anyone who can reach it.
+stays running day-to-day: an exception thrown before the login check runs (a bad
+request, a misconfigured `.env`) would still render a debug page — full stack trace,
+file paths, query bindings — to anyone who can reach the app at all, logged in or not.
 
 ### Testing and code quality
 
@@ -187,9 +204,11 @@ docker exec -u root homie-app chown -R 1000:1000 /var/www/html
 
 ## Current limitations
 
-- No authentication of any kind — access control is entirely "don't expose this to
-  the internet without a login of your own in front of it" (see the `APP_DEBUG` note
-  above). Not suitable for anything but a LAN or an authenticated reverse-proxy setup.
+- A single shared admin login gates the whole dashboard (see `homie:make-admin`
+  above) — there's no per-user accounts, roles, or registration, since homie has no
+  per-user data model to scope any of that to. Still put it behind your own reverse
+  proxy/VPN for anything beyond a trusted LAN; this is one password, not a hardened
+  perimeter.
 - Docker discovery only understands the Docker Engine API and `docker ps` over SSH —
   no Kubernetes, Podman, or other container runtimes.
 - Output cards run whatever shell command you configure with no sandboxing beyond

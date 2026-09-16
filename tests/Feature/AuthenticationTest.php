@@ -6,12 +6,15 @@ use App\Models\User;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\RateLimiter;
 use Livewire\Livewire;
+use Tests\TestCase;
 
 it('redirects a guest hitting the dashboard to the login page', function () {
     $this->get('/')->assertRedirect(route('login'));
 });
 
 it('lets an authenticated user reach the dashboard', function () {
+    /** @var TestCase $this */
+    $this->withoutVite();
     $this->actingAs(User::factory()->create());
 
     $this->get('/')->assertOk();

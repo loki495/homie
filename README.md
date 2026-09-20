@@ -112,31 +112,33 @@ real dashboard fills in with whatever services you configure.
   CSRF check now runs on every request, strictly more protection than the workaround it
   replaced, not less.
 
-## Local development
+## Production deployment
 
-Requires Docker. Nothing external is required — `docker-compose.yml` has no dependency
-on a pre-existing network or any other host-specific setup.
+For a self-hosted installation, use the production Compose file, which binds Apache to
+loopback so that the dashboard has no direct public port:
 
 ```bash
-git clone https://github.com/loki495/homie.git
-cd homie
-docker compose up -d --build
-docker exec -u www-data homie-app composer setup   # composer install, .env, APP_KEY, migrate
-docker exec -u www-data homie-app php artisan homie:make-admin  # create your login
-docker compose run --rm vite npm install           # first time only
-docker compose run --rm vite npm run build
+cp .env.production.example .env.production
+# set APP_URL to the public HTTPS URL, then generate a unique application key:
+docker compose --env-file .env.production -f docker-compose.production.yml run --rm --build --entrypoint php app artisan key:generate --show
+# paste the generated key as APP_KEY in .env.production
+docker compose --env-file .env.production -f docker-compose.production.yml up -d --build --wait
+docker compose --env-file .env.production -f docker-compose.production.yml exec -u www-data app php artisan homie:make-admin
 ```
 
-Site: http://localhost:8090 (override the host port with `APP_PORT` in `.env` if
-8090 collides with something else already running)
+Configure an HTTPS reverse proxy on the same host to forward the chosen public
+hostname to `http://127.0.0.1:8090`. Do not change the loopback bind to `0.0.0.0`
+or publish the port directly to the internet. Every app route still requires the
+admin login created above; Homie has no registration route and ships no default
+private-installation credentials. Keep the persistent Docker volumes in backups:
+they contain the SQLite database, session data, and encrypted SSH/API credentials.
+Back up `.env.production` too, especially `APP_KEY`: without that key, encrypted
+credentials in a restored database cannot be decrypted.
 
-`homie:make-admin` prompts for an email and password (or accepts `--email`/
-`--password`/`--name` for a non-interactive setup) and is also how you reset the
-password later — it's an upsert by email, not a one-time bootstrap step. There's
-exactly one login for the whole dashboard; homie has no per-user data model, so a
-full user-management system would be scaffolding nothing here actually needs.
+The production Compose file builds the application image from this checkout. Set
+`HOMIE_IMAGE` to a trusted image reference if you maintain your own image registry.
 
-#### If you run this behind Traefik
+### If you run this behind Traefik
 
 This repo doesn't ship any Traefik network or routing — the steps above are enough on
 their own. If you do run a Traefik instance and want nicer hostnames instead of the
@@ -159,11 +161,61 @@ so remote requests use the built Vite assets instead of exposing the
 development server. Run `npm run build` after frontend changes intended for
 remote access.
 
+## Local development
+
+For development work, use the local development Compose setup. Requires Docker. Nothing
+external is required — `docker-compose.yml` has no dependency on a pre-existing network
+or any other host-specific setup.
+
+```bash
+git clone https://github.com/loki495/homie.git
+cd homie
+docker compose up -d --build
+docker exec -u www-data homie-app composer setup   # composer install, .env, APP_KEY, migrate
+docker exec -u www-data homie-app php artisan homie:make-admin  # create your login
+docker compose run --rm vite npm install           # first time only
+docker compose run --rm vite npm run build
+```
+
+Site: http://localhost:8090 (override the host port with `APP_PORT` in `.env` if
+8090 collides with something else already running)
+
+`homie:make-admin` prompts for an email and password (or accepts `--email`/
+`--password`/`--name` for a non-interactive setup) and is also how you reset the
+password later — it's an upsert by email, not a one-time bootstrap step. There's
+exactly one login for the whole dashboard; homie has no per-user data model, so a
+full user-management system would be scaffolding nothing here actually needs.
+
 `.env.example` ships with `APP_DEBUG=false` — flip it to `true` locally if you want
 Laravel's debug error pages while developing, but leave it off anywhere the dashboard
 stays running day-to-day: an exception thrown before the login check runs (a bad
 request, a misconfigured `.env`) would still render a debug page — full stack trace,
 file paths, query bindings — to anyone who can reach the app at all, logged in or not.
+
+## Shell command execution
+
+Output cards run user-defined shell commands on a schedule. Here's what you need to know:
+
+**Local commands** (no SSH target):
+- Run inside the `homie-app` Docker container as user `www-data` (UID 1000)
+- Environment: inherit from the container's `.env` and Laravel config (e.g. `APP_DEBUG`, `DB_*` vars are not set)
+- Stdout/stderr: captured and displayed on the card
+- Timeout: 10 seconds — commands that take longer are killed and show "Command timed out after 10s"
+- Failures: exit codes other than 0 show "Command failed with exit code {code}"
+
+**Remote commands (via SSH)**:
+- Run on the target machine (specified in Discovery → SSH key)
+- User: whatever SSH key you provide — typically `root`, `www-data`, or a named user
+- Environment: inherit from the remote machine's shell profile (usually `/bin/sh`)
+- Same timeout and failure handling as local commands
+- SSH key must be saved in the Discovery tab before commands can run
+
+**Important**: output cards only work if:
+1. The target machine/port is reachable from the dashboard container
+2. SSH keys (for remote commands) are saved in the Discovery tab first
+3. The command itself is safe to run repeatedly — output cards refresh on every page load plus any configured interval
+
+See [SECURITY.md](SECURITY.md) for the security model and [CLAUDE.md](CLAUDE.md) for architectural details.
 
 ### Testing and code quality
 

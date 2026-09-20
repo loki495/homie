@@ -1,0 +1,44 @@
+name: homie-production
+
+# Self-hosted production deployment. The app is bound to loopback only: expose
+# it through an HTTPS reverse proxy on this host, never by publishing it
+# directly to the internet. Homie's own login remains required for every route.
+services:
+  app:
+    image: ${HOMIE_IMAGE:-homie:production}
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.prod
+    restart: unless-stopped
+    env_file:
+      - ${HOMIE_ENV_FILE:-.env.production}
+    ports:
+      - "127.0.0.1:${APP_PORT:-8090}:80"
+    volumes:
+      - homie-storage:/var/www/html/storage
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/up"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  scheduler:
+    image: ${HOMIE_IMAGE:-homie:production}
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.prod
+    restart: unless-stopped
+    env_file:
+      - ${HOMIE_ENV_FILE:-.env.production}
+    user: www-data
+    entrypoint: []
+    command: php artisan schedule:work
+    volumes:
+      - homie-storage:/var/www/html/storage
+    depends_on:
+      app:
+        condition: service_healthy
+
+volumes:
+  homie-storage:

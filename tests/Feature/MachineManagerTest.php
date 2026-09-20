@@ -384,6 +384,149 @@ it('does not attempt a port lookup for bridge-network containers with no port or
     Process::assertRanTimes(fn ($process): bool => str_starts_with((string) $process->command, 'ssh '), 1);
 });
 
+it('uses the host verbatim when it already includes a scheme, via the docker api', function () {
+    $machine = Machine::factory()->create(['host' => 'http://custom-docker-host:2377']);
+
+    Http::fake([
+        'custom-docker-host:2377/containers/json' => Http::response([], 200),
+    ]);
+
+    Livewire::test('machine-manager')->call('discover', $machine->id);
+
+    Http::assertSent(fn ($request) => $request->url() === 'http://custom-docker-host:2377/containers/json');
+});
+
+it('reports a non-2xx docker api response instead of a generic failure, via the docker api', function () {
+    $machine = Machine::factory()->create(['host' => 'nas.lan']);
+
+    Http::fake([
+        'nas.lan:2375/containers/json' => Http::response(null, 500),
+    ]);
+
+    $component = Livewire::test('machine-manager')->call('discover', $machine->id);
+
+    expect($component->get('scanError'))->toBe('Docker API returned HTTP 500.');
+});
+
+it('reports no reachable containers found when the docker api returns an empty list', function () {
+    $machine = Machine::factory()->create(['host' => 'nas.lan']);
+
+    Http::fake([
+        'nas.lan:2375/containers/json' => Http::response([], 200),
+    ]);
+
+    $component = Livewire::test('machine-manager')->call('discover', $machine->id);
+
+    expect($component->get('discovered'))->toBe([])
+        ->and($component->get('scanError'))->toBe('No web-reachable containers were found (no Traefik label or published port).');
+});
+
+it('still surfaces a host-network container with a bare host url when the inspect call returns a non-2xx response, via the docker api', function () {
+    $machine = Machine::factory()->create(['host' => 'nas.lan']);
+
+    Http::fake([
+        'nas.lan:2375/containers/json' => Http::response([
+            [
+                'Id' => 'abc123',
+                'Names' => ['/homeassistant'],
+                'Image' => 'ghcr.io/home-assistant/home-assistant',
+                'Ports' => [],
+                'HostConfig' => ['NetworkMode' => 'host'],
+            ],
+        ], 200),
+        'nas.lan:2375/containers/abc123/json' => Http::response(null, 500),
+    ]);
+
+    $component = Livewire::test('machine-manager')->call('discover', $machine->id);
+
+    expect($component->get('discovered'))->toHaveCount(1)
+        ->and($component->get('discovered')[0]['url'])->toBe('http://nas.lan');
+});
+
+it('still surfaces a host-network container with a bare host url when the inspect call throws, via the docker api', function () {
+    $machine = Machine::factory()->create(['host' => 'nas.lan']);
+
+    Http::fake([
+        'nas.lan:2375/containers/json' => Http::response([
+            [
+                'Id' => 'abc123',
+                'Names' => ['/homeassistant'],
+                'Image' => 'ghcr.io/home-assistant/home-assistant',
+                'Ports' => [],
+                'HostConfig' => ['NetworkMode' => 'host'],
+            ],
+        ], 200),
+        'nas.lan:2375/containers/abc123/json' => fn () => throw new ConnectionException('Connection refused'),
+    ]);
+
+    $component = Livewire::test('machine-manager')->call('discover', $machine->id);
+
+    expect($component->get('discovered'))->toHaveCount(1)
+        ->and($component->get('discovered')[0]['url'])->toBe('http://nas.lan');
+});
+
+it('reports a generic exit-code message when ssh discovery fails with no stderr output', function () {
+    $machine = Machine::factory()->ssh()->create();
+
+    Process::fake([
+        'ssh*' => Process::result(output: '', errorOutput: '', exitCode: 255),
+    ]);
+
+    $component = Livewire::test('machine-manager')->call('discover', $machine->id);
+
+    expect($component->get('scanError'))->toBe('SSH discovery failed (exit code 255).');
+});
+
+it('skips a malformed docker ps line instead of crashing discovery, over ssh', function () {
+    $machine = Machine::factory()->ssh()->create(['host' => '192.168.1.6']);
+
+    $validLine = json_encode([
+        'Names' => 'sonarr',
+        'Image' => 'linuxserver/sonarr',
+        'Ports' => '0.0.0.0:8989->8989/tcp',
+    ]);
+
+    Process::fake([
+        'ssh*' => Process::result(output: "not-valid-json\n{$validLine}", exitCode: 0),
+    ]);
+
+    $component = Livewire::test('machine-manager')->call('discover', $machine->id);
+
+    expect($component->get('discovered'))->toHaveCount(1)
+        ->and($component->get('discovered')[0]['name'])->toBe('sonarr');
+});
+
+it('ignores unrecognized docker inspect output lines when resolving host-network ports, over ssh', function () {
+    $machine = Machine::factory()->ssh()->create(['host' => '192.168.1.6']);
+
+    $psLine = json_encode([
+        'Names' => 'homeassistant',
+        'Image' => 'ghcr.io/home-assistant/home-assistant',
+        'Ports' => '',
+        'Networks' => 'host',
+    ]);
+
+    // Two lines: one with no '::' separator at all (skipped by the format guard), one
+    // for a container name that was never asked about (skipped by the lookup guard).
+    $inspectOutput = implode("\n", [
+        'a line with no separator',
+        '/some-other-container::{"9000/tcp":{}}',
+        '/homeassistant::{"8123/tcp":{}}',
+    ]);
+
+    Process::fake([
+        'ssh*' => Process::sequence()
+            ->push(Process::result(output: $psLine, exitCode: 0))
+            ->push(Process::result(output: $inspectOutput, exitCode: 0)),
+    ]);
+
+    $component = Livewire::test('machine-manager')->call('discover', $machine->id);
+
+    expect($component->get('discovered'))->toHaveCount(1)
+        ->and($component->get('discovered')[0]['name'])->toBe('homeassistant')
+        ->and($component->get('discovered')[0]['url'])->toBe('http://192.168.1.6:8123');
+});
+
 it('surfaces the ssh error output when discovery fails', function () {
     $machine = Machine::factory()->ssh()->create();
 

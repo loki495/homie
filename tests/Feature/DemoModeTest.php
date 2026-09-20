@@ -6,12 +6,16 @@ use Illuminate\Foundation\Testing\RefreshDatabaseState;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Livewire\Livewire;
 use Tests\TestCase;
 
 /**
- * Feature-level test of the two demo-mode middlewares (ResolveDemoDatabase +
- * RequireBasicAuthInDemoMode) actually composing together against a real route,
- * rather than each in isolation - this is what a real visitor experiences.
+ * Feature-level test of ResolveDemoDatabase + RequireAuthentication actually
+ * composing together against a real route, rather than each in isolation -
+ * this is what a real visitor experiences. Demo mode used to gate access with
+ * HTTP Basic Auth (RequireBasicAuthInDemoMode, since removed) - it now reuses
+ * the same real login as everywhere else, against a shared admin user seeded
+ * into every visitor's own copy of the template (see BuildDemoTemplate).
  */
 beforeEach(function () {
     $this->tempDir = sys_get_temp_dir().'/homie-demo-feature-test-'.uniqid();
@@ -85,86 +89,54 @@ afterEach(function () {
     @rmdir($this->tempDir);
 });
 
-it('blocks the demo site behind Basic Auth with no credentials', function () {
-    $this->get('/')->assertStatus(401);
+it('redirects a guest on the demo site to the login page, same as any other deployment', function () {
+    $this->get('/')->assertRedirect(route('login'));
 });
 
-it('still blocks a request with no Cloudflare headers when demo_trust_lan is off (default)', function () {
-    config(['homie.demo_trust_lan' => false]);
-
-    $this->get('/')->assertStatus(401);
+it('prefills the shared demo credentials on the login page itself', function () {
+    Livewire::test('login')
+        ->assertSet('email', config('homie.demo_admin_email'))
+        ->assertSet('password', config('homie.demo_admin_password'));
 });
 
-it('skips Basic Auth for a request with no Cloudflare headers when demo_trust_lan is on', function () {
-    /** @var TestCase $this */
-    $this->withoutVite();
-    config(['homie.demo_trust_lan' => true]);
-
-    $this->call('GET', '/', server: ['REMOTE_ADDR' => '192.168.1.50'])->assertStatus(200);
-});
-
-it('does not skip Basic Auth via demo_trust_lan for a non-private client IP even with no Cloudflare headers', function () {
-    /** @var TestCase $this */
-    config(['homie.demo_trust_lan' => true]);
-
-    $this->call('GET', '/', server: ['REMOTE_ADDR' => '8.8.8.8'])->assertStatus(401);
-});
-
-it('does not skip Basic Auth via demo_trust_lan for a request that went through Cloudflare', function () {
-    config(['homie.demo_trust_lan' => true]);
-
-    $this->withHeaders(['CF-Connecting-IP' => '1.2.3.4'])
-        ->get('/')
-        ->assertStatus(401);
-});
-
-it('skips Basic Auth when Cloudflare Access asserts the configured owner email', function () {
-    /** @var TestCase $this */
-    $this->withoutVite();
-    config(['homie.demo_owner_email' => 'owner@example.com']);
-
-    $this->withHeaders([
-        'CF-Connecting-IP' => '1.2.3.4',
-        'Cf-Access-Authenticated-User-Email' => 'owner@example.com',
-    ])->get('/')->assertStatus(200);
-});
-
-it('does not skip Basic Auth when the asserted Cloudflare identity does not match the owner email', function () {
-    config(['homie.demo_owner_email' => 'owner@example.com']);
-
-    $this->withHeaders([
-        'CF-Connecting-IP' => '1.2.3.4',
-        'Cf-Access-Authenticated-User-Email' => 'someone-else@example.com',
-    ])->get('/')->assertStatus(401);
-});
-
-it('does not skip Basic Auth from a client-supplied Cloudflare identity header when no owner email is configured', function () {
-    config(['homie.demo_owner_email' => null]);
-
-    $this->withHeaders([
-        'CF-Connecting-IP' => '1.2.3.4',
-        'Cf-Access-Authenticated-User-Email' => 'anyone@example.com',
-    ])->get('/')->assertStatus(401);
-});
-
-it('rejects the wrong password', function () {
-    $this->withHeaders(['Authorization' => 'Basic '.base64_encode('demo@example.com:wrong-password')])
-        ->get('/')
-        ->assertStatus(401);
-});
-
-it('allows access with the correct demo credentials and isolates the visitor to their own copy', function () {
-    // home.blade.php is the only view that renders @vite, and no built
-    // public/build/manifest.json exists in a fresh CI checkout - same reason
-    // HomeTest.php disables it (see this repo's own CLAUDE.md "Testing" section).
+it('rejects the wrong password on the demo site', function () {
     /** @var TestCase $this */
     $this->withoutVite();
 
-    $this->withHeaders(['Authorization' => 'Basic '.base64_encode('demo@example.com:secret-password')])
-        ->get('/')
-        ->assertStatus(200);
+    // A real visit first, same as any visitor - this is what actually runs
+    // ResolveDemoDatabase and repoints the 'sqlite' connection to a fresh
+    // per-visitor copy that Livewire::test() below then operates against.
+    $this->get('/');
+
+    Livewire::test('login')
+        ->set('email', 'demo@example.com')
+        ->set('password', 'wrong-password')
+        ->call('login')
+        ->assertHasErrors(['email']);
+
+    $this->assertGuest();
+});
+
+it('logs in with the shared demo credentials and isolates the visitor to their own copy', function () {
+    /** @var TestCase $this */
+    $this->withoutVite();
+
+    $this->get('/');
+
+    Livewire::test('login')
+        ->set('email', 'demo@example.com')
+        ->set('password', 'secret-password')
+        ->call('login')
+        ->assertRedirect('/');
+
+    $this->assertAuthenticated();
 
     // One private per-visitor copy was made; the template itself is untouched.
+    // Per-visitor cookie/copy isolation itself (new cookie -> new copy,
+    // existing cookie -> reused copy, malformed cookie -> treated as new) is
+    // covered directly against ResolveDemoDatabase in
+    // tests/Unit/Http/Middleware/ResolveDemoDatabaseTest.php - this only
+    // confirms the real login composes with it correctly, end to end.
     expect(glob("{$this->storagePath}/*.sqlite"))->toHaveCount(1)
         ->and(filesize($this->templatePath))->toBe(filesize(current(glob("{$this->storagePath}/*.sqlite") ?: [''])));
 });

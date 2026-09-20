@@ -54,6 +54,23 @@ it('removes the synced key file when the machine is deleted', function () {
     expect(file_exists($path))->toBeFalse();
 });
 
+it('creates the ssh key directory when it does not exist yet', function () {
+    $originalPath = config('homie.ssh_key_path');
+    $freshDir = sys_get_temp_dir().'/homie-ssh-key-dir-test-'.uniqid();
+    config(['homie.ssh_key_path' => $freshDir]);
+
+    expect(is_dir($freshDir))->toBeFalse();
+
+    Machine::factory()->create(['name' => 'Fresh Dir Machine', 'ssh_private_key' => 'fake-key-contents']);
+
+    expect(is_dir($freshDir))->toBeTrue()
+        ->and(file_exists("{$freshDir}/fresh-dir-machine"))->toBeTrue();
+
+    array_map(unlink(...), glob("{$freshDir}/*") ?: []);
+    rmdir($freshDir);
+    config(['homie.ssh_key_path' => $originalPath]);
+});
+
 it('does not create a key file for machines with no ssh key', function () {
     $machine = Machine::factory()->create(['name' => 'Test Machine None', 'ssh_private_key' => null]);
 

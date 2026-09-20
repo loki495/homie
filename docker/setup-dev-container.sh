@@ -85,6 +85,10 @@ docker-php-ext-configure gd --with-jpeg --with-freetype --with-webp
 docker-php-ext-install gd pdo_sqlite zip sockets
 docker-php-ext-enable gd pdo_sqlite zip sockets
 
+# PCOV for `composer pest --coverage` (lighter/faster than Xdebug for coverage-only use)
+pecl install pcov
+echo 'extension=pcov.so' > /usr/local/etc/php/conf.d/pcov.ini
+
 # Enable Apache modules
 a2enmod rewrite
 a2enmod headers

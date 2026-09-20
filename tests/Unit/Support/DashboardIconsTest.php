@@ -119,6 +119,17 @@ it('falls back to heroicons when no app icon matches', function () {
         ->and($results[0]['url'])->toBe('https://cdn.jsdelivr.net/npm/heroicons/24/outline/academic-cap.svg');
 });
 
+it('stops scanning heroicons once the limit is reached', function () {
+    Http::fake([
+        'cdn.jsdelivr.net/*' => Http::response([], 200),
+        'data.jsdelivr.com/*' => Http::response(fakeHeroiconsIndex(['zzz-one', 'zzz-two', 'zzz-three']), 200),
+    ]);
+
+    $results = app(DashboardIcons::class)->search('zzz', limit: 2);
+
+    expect($results)->toHaveCount(2);
+});
+
 it('matches heroicons by a space-separated query against their hyphenated name', function () {
     Http::fake([
         'cdn.jsdelivr.net/*' => Http::response([], 200),

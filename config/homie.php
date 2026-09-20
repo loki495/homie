@@ -25,16 +25,18 @@ return [
     | deployment, which must never be affected by any of this. When on, every
     | visitor gets their own private copy of demo_db_template_path (homie has
     | no per-user data model of its own, so this is the only way to isolate
-    | concurrent public demo visitors from each other) and the whole app is
-    | gated behind HTTP Basic Auth against a user seeded into that same
-    | template. See ResolveDemoDatabase and RequireBasicAuthInDemoMode.
+    | concurrent public demo visitors from each other), and every visitor's
+    | copy already has this same admin user seeded into it (see
+    | BuildDemoTemplate) - the real login (RequireAuthentication) applies here
+    | exactly as it does outside demo mode, using this shared credential
+    | instead of a per-deployment one. See ResolveDemoDatabase.
     |
     */
     'demo_mode' => env('DEMO_MODE', false),
     'demo_db_template_path' => env('DEMO_DB_TEMPLATE_PATH', storage_path('demo-template.sqlite')),
     'demo_db_storage_path' => env('DEMO_DB_STORAGE_PATH', storage_path('demo-dbs')),
-    'demo_basic_auth_email' => env('DEMO_BASIC_AUTH_EMAIL', 'demo@homie.ac495.net'),
-    'demo_basic_auth_password' => env('DEMO_BASIC_AUTH_PASSWORD', 'homie-demo'),
+    'demo_admin_email' => env('DEMO_ADMIN_EMAIL', 'demo@example.test'),
+    'demo_admin_password' => env('DEMO_ADMIN_PASSWORD', 'homie-demo'),
 
     /*
     |--------------------------------------------------------------------------
@@ -77,19 +79,4 @@ return [
     'demo_sandbox_ssh_private_key' => env('DEMO_SANDBOX_SSH_PRIVATE_KEY')
         ? base64_decode((string) env('DEMO_SANDBOX_SSH_PRIVATE_KEY'))
         : null,
-
-    /*
-    |--------------------------------------------------------------------------
-    | Demo Basic Auth bypass for trusted requests
-    |--------------------------------------------------------------------------
-    |
-    | Demo mode only. Lets the owner skip typing the demo's Basic Auth
-    | credentials from two trusted paths - see RequireBasicAuthInDemoMode for
-    | the actual checks and why each is safe against a spoofed request, not
-    | just convenient. Off (both null/false) by default; a normal clone of
-    | this repo never enables either.
-    |
-    */
-    'demo_owner_email' => env('DEMO_OWNER_EMAIL'),
-    'demo_trust_lan' => env('DEMO_TRUST_LAN', false),
 ];

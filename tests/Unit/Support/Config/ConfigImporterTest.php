@@ -116,6 +116,87 @@ it('skips a machine with an unknown discovery method instead of crashing the who
         ->and(Machine::where('name', 'Bad machine')->exists())->toBeFalse();
 });
 
+it('skips a machine missing a name or host instead of crashing the whole import', function () {
+    $result = app(ConfigImporter::class)->import([
+        'machines' => [
+            ['host' => 'no-name.lan', 'discovery_method' => 'docker'],
+            ['name' => 'No host', 'discovery_method' => 'docker'],
+            ['name' => 'Valid machine', 'host' => 'valid.lan', 'discovery_method' => 'docker'],
+        ],
+    ]);
+
+    expect($result->machines)->toBe(1)
+        ->and($result->warnings)->toContain('Skipped machine at index 0: missing a name or host.')
+        ->and($result->warnings)->toContain('Skipped machine at index 1: missing a name or host.')
+        ->and(Machine::where('name', 'Valid machine')->exists())->toBeTrue();
+});
+
+it('warns that a re-entered ssh private key is needed after import instead of importing a fake one', function () {
+    $result = app(ConfigImporter::class)->import([
+        'machines' => [
+            ['name' => 'Media', 'host' => 'media.lan', 'discovery_method' => 'docker', 'has_ssh_private_key' => true],
+        ],
+    ]);
+
+    $machine = Machine::where('name', 'Media')->first();
+
+    expect($machine?->ssh_private_key)->toBeNull()
+        ->and($result->warnings)->toContain('Machine "Media" needs its SSH private key re-entered (not included in the export).');
+});
+
+it('skips a card missing a name instead of crashing the whole import', function () {
+    $result = app(ConfigImporter::class)->import([
+        'ungrouped_cards' => [
+            ['type' => CardType::Link->value],
+            ['name' => 'Valid card', 'type' => CardType::Link->value],
+        ],
+    ]);
+
+    expect($result->cards)->toBe(1)
+        ->and($result->warnings)->toContain('Skipped card at index 0: missing a name.')
+        ->and(Card::where('name', 'Valid card')->exists())->toBeTrue();
+});
+
+it('warns that a re-entered password is needed after import instead of importing a fake one', function () {
+    $result = app(ConfigImporter::class)->import([
+        'ungrouped_cards' => [[
+            'name' => 'NZBGet',
+            'type' => 'api',
+            'api' => [
+                'provider' => 'nzbget',
+                'base_url' => 'http://nzbget.lan',
+                'auth_type' => 'basic',
+                'has_password' => true,
+            ],
+        ]],
+    ]);
+
+    $card = Card::where('name', 'NZBGet')->first();
+
+    expect($card?->api?->password)->toBeNull()
+        ->and($result->warnings)->toContain('Card "NZBGet" needs its password re-entered (not included in the export).');
+});
+
+it('skips an api connection with missing or invalid fields but keeps the card', function () {
+    $result = app(ConfigImporter::class)->import([
+        'ungrouped_cards' => [[
+            'name' => 'Broken Api Card',
+            'type' => 'api',
+            'api' => [
+                'provider' => 'sonarr',
+                'auth_type' => 'api_key',
+                // base_url intentionally missing
+            ],
+        ]],
+    ]);
+
+    $card = Card::where('name', 'Broken Api Card')->first();
+
+    expect($result->cards)->toBe(1)
+        ->and($card?->api)->toBeNull()
+        ->and($result->warnings)->toContain('Card "Broken Api Card": skipped its API connection, missing or invalid fields.');
+});
+
 it('imports cleanly from an entirely empty payload without error', function () {
     $result = app(ConfigImporter::class)->import([]);
 

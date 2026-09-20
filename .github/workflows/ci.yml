@@ -26,7 +26,7 @@ jobs:
           # a global afterEach hook. Without this extension the whole suite
           # errors out here too, exactly as it did for homie-app locally.
           extensions: mbstring, dom, fileinfo, sqlite3, pdo_sqlite, sockets
-          coverage: none
+          coverage: pcov
 
       - name: Copy .env
         run: cp .env.example .env
@@ -59,8 +59,15 @@ jobs:
       - name: Rector (dry-run)
         run: ./vendor/bin/rector process --dry-run
 
-      - name: Pest
-        run: ./vendor/bin/pest
+      - name: Pest (with coverage)
+        run: ./vendor/bin/pest --coverage --coverage-clover=coverage.xml
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          files: coverage.xml
+          token: ${{ secrets.CODECOV_TOKEN }}
+          fail_ci_if_error: false
 
   frontend:
     name: Frontend build

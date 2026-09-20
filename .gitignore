@@ -32,3 +32,5 @@ Thumbs.db
 /tests/Browser/Screenshots
 todo
 /docker-compose.override.yml
+/coverage.xml
+/.ai/

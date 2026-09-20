@@ -2,6 +2,7 @@
 
 [![CI](https://github.com/loki495/homie/actions/workflows/ci.yml/badge.svg)](https://github.com/loki495/homie/actions/workflows/ci.yml)
 [![codecov](https://codecov.io/gh/loki495/homie/graph/badge.svg)](https://codecov.io/gh/loki495/homie)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 A self-hosted, configurable homepage/dashboard for home lab services — cards for each
 service or module, grouped and reorderable, with live output widgets (CPU/mem/disk,

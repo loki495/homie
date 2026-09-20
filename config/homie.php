@@ -35,7 +35,7 @@ return [
     'demo_mode' => env('DEMO_MODE', false),
     'demo_db_template_path' => env('DEMO_DB_TEMPLATE_PATH', storage_path('demo-template.sqlite')),
     'demo_db_storage_path' => env('DEMO_DB_STORAGE_PATH', storage_path('demo-dbs')),
-    'demo_admin_email' => env('DEMO_ADMIN_EMAIL', 'demo@homie.ac495.net'),
+    'demo_admin_email' => env('DEMO_ADMIN_EMAIL', 'demo@example.test'),
     'demo_admin_password' => env('DEMO_ADMIN_PASSWORD', 'homie-demo'),
 
     /*

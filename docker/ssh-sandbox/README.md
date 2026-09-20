@@ -148,8 +148,9 @@ configuration, not just the unrestricted build from earlier in this file.
   cleanup before the Machine-row wiring happened) and re-verified against
   the exact final `cap_drop`/`cap_add` configuration - every test in this
   file passed against the actual keypair now committed here.
-- Deployed to media (`homie-output-sandbox`), reachable at
-  `sandbox@192.168.1.6:2222` from outside media.
+- In a deployment, reach it through the Compose service name
+  (`sandbox@output-sandbox:2222`) from the Homie app network. Do not publish a
+  host or LAN address in deployment documentation.
 - `DemoDashboardSeeder` now seeds a "Demo sandbox" `Machine` row plus a
   "Try: uptime" output card when `DEMO_SANDBOX_SSH_PRIVATE_KEY` is set (see
   `config/homie.php`'s "Demo output-card SSH sandbox" section) - skipped

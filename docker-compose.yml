@@ -66,6 +66,15 @@ services:
     restart: unless-stopped
     working_dir: /var/www/html
     command: ["npm", "run", "dev", "--", "--host", "0.0.0.0", "--port", "5173"]
+    # Published so the host browser (the common case: localhost:${APP_PORT})
+    # can actually reach HMR assets at the default VITE_HMR_HOST (unset ->
+    # localhost) - was missing entirely before, so a plain `docker compose up`
+    # left every dev page with broken CSS/JS regardless of VITE_HMR_HOST/.env
+    # (ERR_CONNECTION_REFUSED, not a routing issue - nothing published this
+    # port to the host at all). See CLAUDE.md's "Container / infra" note this
+    # closes.
+    ports:
+      - "${VITE_PORT:-5173}:5173"
     healthcheck:
       test: ["CMD", "wget", "-q", "--spider", "http://localhost:5173/@vite/client"]
       interval: 30s

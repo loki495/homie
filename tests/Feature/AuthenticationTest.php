@@ -12,6 +12,14 @@ it('redirects a guest hitting the dashboard to the login page', function () {
     $this->get('/')->assertRedirect(route('login'));
 });
 
+it('does not expose a public registration route', function () {
+    $this->get('/register')->assertNotFound();
+    $this->post('/register', [
+        'email' => 'visitor@example.test',
+        'password' => 'a-strong-password',
+    ])->assertNotFound();
+});
+
 it('lets an authenticated user reach the dashboard', function () {
     /** @var TestCase $this */
     $this->withoutVite();

@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Http\Middleware\AutoLoginForTrustedRequests;
 use App\Http\Middleware\RequireAuthentication;
 use App\Http\Middleware\ResolveDemoDatabase;
 use App\Http\Middleware\UseStaticAssetsForRemoteHost;
@@ -52,6 +53,8 @@ return Application::configure(basePath: dirname(__DIR__))
 
         // RequireAuthentication needs Auth::guard()->check(), which needs the
         // session already started - stays appended (after StartSession).
+        // Auto-login (demo mode + opt-in only) must land before the auth gate below.
+        $middleware->appendToGroup('web', AutoLoginForTrustedRequests::class);
         $middleware->appendToGroup('web', RequireAuthentication::class);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

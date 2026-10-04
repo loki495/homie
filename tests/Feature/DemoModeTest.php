@@ -140,3 +140,46 @@ it('logs in with the shared demo credentials and isolates the visitor to their o
     expect(glob("{$this->storagePath}/*.sqlite"))->toHaveCount(1)
         ->and(filesize($this->templatePath))->toBe(filesize(current(glob("{$this->storagePath}/*.sqlite") ?: [''])));
 });
+
+it('does not auto-login by default, even from a private address with no Cloudflare headers', function () {
+    /** @var TestCase $this */
+    config(['homie.demo_admin_email' => 'demo@example.com']);
+
+    $this->call('GET', '/', server: ['REMOTE_ADDR' => '192.168.1.50'])->assertRedirect(route('login'));
+});
+
+it('auto-logs in the demo admin for a LAN request when auto_login_lan is on', function () {
+    /** @var TestCase $this */
+    $this->withoutVite();
+    config(['homie.demo_admin_email' => 'demo@example.com', 'homie.auto_login_lan' => true]);
+
+    $this->call('GET', '/', server: ['REMOTE_ADDR' => '192.168.1.50'])->assertOk();
+
+    $this->assertAuthenticated();
+});
+
+it('does not auto-login a non-private address or a Cloudflare-routed request', function () {
+    /** @var TestCase $this */
+    config(['homie.demo_admin_email' => 'demo@example.com', 'homie.auto_login_lan' => true]);
+
+    $this->call('GET', '/', server: ['REMOTE_ADDR' => '8.8.8.8'])->assertRedirect(route('login'));
+    $this->call('GET', '/', server: ['REMOTE_ADDR' => '192.168.1.50', 'HTTP_CF_CONNECTING_IP' => '1.2.3.4'])
+        ->assertRedirect(route('login'));
+});
+
+it('auto-logs in when Cloudflare Access asserts the owner email, and not on a mismatch or unset owner', function () {
+    /** @var TestCase $this */
+    $this->withoutVite();
+    config(['homie.demo_admin_email' => 'demo@example.com']);
+    $headers = ['CF-Connecting-IP' => '1.2.3.4', 'Cf-Access-Authenticated-User-Email' => 'owner@example.com'];
+
+    config(['homie.auto_login_owner_email' => null]);
+    $this->withHeaders($headers)->get('/')->assertRedirect(route('login'));
+
+    config(['homie.auto_login_owner_email' => 'someone@example.com']);
+    $this->withHeaders($headers)->get('/')->assertRedirect(route('login'));
+
+    config(['homie.auto_login_owner_email' => 'owner@example.com']);
+    $this->withHeaders($headers)->get('/')->assertOk();
+    $this->assertAuthenticated();
+});

@@ -38,6 +38,12 @@ return [
     'demo_admin_email' => env('DEMO_ADMIN_EMAIL', 'demo@example.test'),
     'demo_admin_password' => env('DEMO_ADMIN_PASSWORD', 'homie-demo'),
 
+    // Opt-in owner auto-login (any deployment), see AutoLoginForTrustedRequests. All off by default.
+    // Account to sign in as; defaults to the demo account in demo mode. Never created, must already exist.
+    'auto_login_email' => env('AUTO_LOGIN_EMAIL'),
+    'auto_login_lan' => (bool) env('AUTO_LOGIN_LAN', false),
+    'auto_login_owner_email' => env('AUTO_LOGIN_OWNER_EMAIL'),
+
     /*
     |--------------------------------------------------------------------------
     | Demo mock arr-stack API

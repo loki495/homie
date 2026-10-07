@@ -110,3 +110,25 @@ it('logs an authenticated user out', function () {
 
     $this->assertGuest();
 });
+
+it('does not let the X-Livewire header bypass the login redirect', function () {
+    /** @var TestCase $this */
+    $this->withHeader('X-Livewire', '1')->get('/')->assertRedirect(route('login'));
+});
+
+it('rejects a guest Livewire update for a component served on a protected page', function () {
+    /** @var TestCase $this */
+    $this->withoutVite();
+    $this->actingAs(User::factory()->create());
+    $html = $this->get('/')->getContent();
+    preg_match('/wire:snapshot="([^"]+)"/', (string) $html, $m);
+    expect($m)->not->toBeEmpty();
+    auth()->logout();
+    app('auth')->forgetGuards();
+
+    $response = $this->withHeader('X-Livewire', '1')->postJson(route('default-livewire.update'), [
+        'components' => [['snapshot' => html_entity_decode($m[1]), 'updates' => [], 'calls' => []]],
+    ]);
+
+    expect($response->status())->not->toBe(200);
+});

@@ -7,7 +7,6 @@ namespace App\Http\Middleware;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Livewire\Livewire;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
@@ -22,16 +21,13 @@ use Symfony\Component\HttpFoundation\Response;
  * with that same shared row in it, so no extra plumbing was needed to make
  * this work per-visitor.
  *
- * Must not redirect Livewire's own update requests (X-Livewire header) - that
- * endpoint shares the 'web' middleware group, so without this exemption the
- * login form's own submit request would get redirected to /login *before*
- * Auth::attempt() ever ran (found live: fields reset with no visible error,
- * because Livewire's JS received a 302/HTML response instead of its expected
- * JSON one). Safe to exempt unconditionally: Livewire signs every component
- * snapshot against APP_KEY, so an unauthenticated visitor can only ever hold
- * a valid snapshot for a component a public page actually served them (i.e.
- * the login form itself) - there's no protected-component snapshot to forge
- * without having loaded an authenticated page first.
+ * Livewire's update endpoint is exempt (by route, never by the spoofable
+ * X-Livewire header) because it shares the 'web' group and the login form's
+ * own submit would otherwise be redirected before Auth::attempt() ran. It is
+ * safe because this middleware is registered as Livewire persistent
+ * middleware (AppServiceProvider), so every update re-runs it against the
+ * route the component was loaded from: a guest can only update components
+ * served on public routes (login).
  */
 class RequireAuthentication
 {
@@ -40,7 +36,7 @@ class RequireAuthentication
      */
     public function handle(Request $request, Closure $next): Response
     {
-        if ($request->routeIs('login', 'logout') || Livewire::isLivewireRequest()) {
+        if ($request->routeIs('login', 'logout', '*livewire.update')) {
             return $next($request);
         }
 

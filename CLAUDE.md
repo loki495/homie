@@ -455,6 +455,14 @@ this same login instead, against a shared admin credential seeded into every vis
 own per-visitor database copy — see "Demo mode" below for the full reasoning and the
 history of what this replaced.
 
+**Livewire requests are exempted by route, never by header.** The update endpoint
+(`*livewire.update`) skips the login redirect so the login form's own submit works, but
+the `X-Livewire` header is client-controlled: exempting on it let a guest `GET /` with
+that header render the whole dashboard and collect signed snapshots of its components.
+`RequireAuthentication` is also registered via `Livewire::addPersistentMiddleware()` in
+`AppServiceProvider`, so each update re-runs it against the route the component was
+loaded from. Tests: the last two cases in `tests/Feature/AuthenticationTest.php`.
+
 **Single admin, not a user-management system.** Homie has no per-user data model —
 cards, groups, and machines aren't owned by anyone — so there is exactly one
 credential that matters, not an account system. `php artisan homie:make-admin`

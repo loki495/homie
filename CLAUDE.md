@@ -446,9 +446,11 @@ cookie removes the need for any exemption, so the middleware and its test are go
 Laravel's normal token check now runs on every request — strictly more protection than
 before, not less.
 
-`trustProxies(at: '*')` remains, but is no longer load-bearing for security: it now only
-affects the accuracy of the client IP in logs. Narrowing it to Traefik's actual
-container/network CIDR is still tidier, just no longer urgent.
+`trustProxies(at: '*')` remains and makes `$request->ip()` client-controllable, so it must
+never feed a trust decision; it only affects the client IP in logs. The auto-login LAN check
+(`AutoLoginForTrustedRequests`) reads the socket peer (`REMOTE_ADDR`) for that reason, and
+`tests/Feature/AutoLoginTest.php` covers a spoofed `X-Forwarded-For`. Narrowing the trusted
+proxies to Traefik's actual container/network CIDR is still tidier, just no longer urgent.
 
 ## Application auth
 

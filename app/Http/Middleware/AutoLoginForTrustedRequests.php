@@ -16,7 +16,7 @@ use Symfony\Component\HttpFoundation\Response;
  * config('homie.auto_login_email') - never creates an account. In demo mode that defaults to the shared
  * demo account.
  *
- * Never trusts $request->ip()/X-Forwarded-For alone (a client can append to that chain). A request counts
+ * Never uses $request->ip(): trustProxies('*') makes it the client-supplied X-Forwarded-For entry, so the check reads the socket peer (REMOTE_ADDR) instead. A request counts
  * as LAN when auto_login_lan is on, it carries no Cloudflare edge header (CF-Connecting-IP/CF-Ray, which
  * only Cloudflare adds) and its peer is a private address - only valid when nothing but the tunnel and the
  * LAN can reach this app. A request that did come through Cloudflare is trusted only when Cloudflare Access
@@ -53,10 +53,10 @@ class AutoLoginForTrustedRequests
     private function isTrusted(Request $request): bool
     {
         if (! $request->headers->has('CF-Connecting-IP') && ! $request->headers->has('CF-Ray')) {
-            $ip = $request->ip();
+            $ip = $request->server->get('REMOTE_ADDR');
 
             return (bool) config('homie.auto_login_lan')
-                && $ip !== null
+                && is_string($ip)
                 && filter_var($ip, FILTER_VALIDATE_IP) !== false
                 && filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE) === false;
         }

@@ -269,7 +269,7 @@ it('surfaces a traefik-labeled container even with no published port, over ssh',
 });
 
 it('falls back to the image-declared exposed port for host-network containers, over ssh', function () {
-    $machine = Machine::factory()->ssh()->create(['host' => '192.168.1.6']);
+    $machine = Machine::factory()->ssh()->create(['host' => '192.0.2.10']);
 
     $psLine = json_encode([
         'Names' => 'homeassistant',
@@ -289,11 +289,11 @@ it('falls back to the image-declared exposed port for host-network containers, o
 
     expect($component->get('discovered'))->toHaveCount(1)
         ->and($component->get('discovered')[0]['name'])->toBe('homeassistant')
-        ->and($component->get('discovered')[0]['url'])->toBe('http://192.168.1.6:8123');
+        ->and($component->get('discovered')[0]['url'])->toBe('http://192.0.2.10:8123');
 });
 
 it('still surfaces host-network containers with a bare host url when the image declares no exposed port, over ssh', function () {
-    $machine = Machine::factory()->ssh()->create(['host' => '192.168.1.6']);
+    $machine = Machine::factory()->ssh()->create(['host' => '192.0.2.10']);
 
     $psLine = json_encode([
         'Names' => 'homeassistant',
@@ -313,11 +313,11 @@ it('still surfaces host-network containers with a bare host url when the image d
 
     expect($component->get('discovered'))->toHaveCount(1)
         ->and($component->get('discovered')[0]['name'])->toBe('homeassistant')
-        ->and($component->get('discovered')[0]['url'])->toBe('http://192.168.1.6');
+        ->and($component->get('discovered')[0]['url'])->toBe('http://192.0.2.10');
 });
 
 it('still surfaces a host-network container even if the docker inspect lookup itself fails, over ssh', function () {
-    $machine = Machine::factory()->ssh()->create(['host' => '192.168.1.6']);
+    $machine = Machine::factory()->ssh()->create(['host' => '192.0.2.10']);
 
     $psLine = json_encode([
         'Names' => 'homeassistant',
@@ -336,11 +336,11 @@ it('still surfaces a host-network container even if the docker inspect lookup it
 
     expect($component->get('discovered'))->toHaveCount(1)
         ->and($component->get('discovered')[0]['name'])->toBe('homeassistant')
-        ->and($component->get('discovered')[0]['url'])->toBe('http://192.168.1.6');
+        ->and($component->get('discovered')[0]['url'])->toBe('http://192.0.2.10');
 });
 
 it('still surfaces a host-network container with a bare host url if the inspect lookup times out, over ssh', function () {
-    $machine = Machine::factory()->ssh()->create(['host' => '192.168.1.6']);
+    $machine = Machine::factory()->ssh()->create(['host' => '192.0.2.10']);
 
     $psLine = json_encode([
         'Names' => 'homeassistant',
@@ -361,11 +361,11 @@ it('still surfaces a host-network container with a bare host url if the inspect 
 
     expect($component->get('discovered'))->toHaveCount(1)
         ->and($component->get('discovered')[0]['name'])->toBe('homeassistant')
-        ->and($component->get('discovered')[0]['url'])->toBe('http://192.168.1.6');
+        ->and($component->get('discovered')[0]['url'])->toBe('http://192.0.2.10');
 });
 
 it('does not attempt a port lookup for bridge-network containers with no port or traefik label, over ssh', function () {
-    $machine = Machine::factory()->ssh()->create(['host' => '192.168.1.6']);
+    $machine = Machine::factory()->ssh()->create(['host' => '192.0.2.10']);
 
     $psLine = json_encode([
         'Names' => 'internal-cache',
@@ -478,7 +478,7 @@ it('reports a generic exit-code message when ssh discovery fails with no stderr 
 });
 
 it('skips a malformed docker ps line instead of crashing discovery, over ssh', function () {
-    $machine = Machine::factory()->ssh()->create(['host' => '192.168.1.6']);
+    $machine = Machine::factory()->ssh()->create(['host' => '192.0.2.10']);
 
     $validLine = json_encode([
         'Names' => 'sonarr',
@@ -497,7 +497,7 @@ it('skips a malformed docker ps line instead of crashing discovery, over ssh', f
 });
 
 it('ignores unrecognized docker inspect output lines when resolving host-network ports, over ssh', function () {
-    $machine = Machine::factory()->ssh()->create(['host' => '192.168.1.6']);
+    $machine = Machine::factory()->ssh()->create(['host' => '192.0.2.10']);
 
     $psLine = json_encode([
         'Names' => 'homeassistant',
@@ -524,7 +524,7 @@ it('ignores unrecognized docker inspect output lines when resolving host-network
 
     expect($component->get('discovered'))->toHaveCount(1)
         ->and($component->get('discovered')[0]['name'])->toBe('homeassistant')
-        ->and($component->get('discovered')[0]['url'])->toBe('http://192.168.1.6:8123');
+        ->and($component->get('discovered')[0]['url'])->toBe('http://192.0.2.10:8123');
 });
 
 it('surfaces the ssh error output when discovery fails', function () {

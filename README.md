@@ -31,7 +31,7 @@ real dashboard fills in with whatever services you configure.
 - Tailwind CSS v4 (via `@tailwindcss/vite`)
 - Flux UI (free tier) for form/button components
 - SQLite
-- Docker + Traefik for local development
+- Docker Compose for local development and deployment
 
 ## Features
 
@@ -176,29 +176,6 @@ new `APP_KEY`, sign in, export the configuration from the Backup tab, import tha
 file, then re-enter the SSH keys and API credentials: the export never includes
 secrets, so the import replaces the undecryptable ones with empty fields.
 
-### If you run this behind Traefik
-
-This repo doesn't ship any Traefik network or routing — the steps above are enough on
-their own. If you do run a Traefik instance and want nicer hostnames instead of the
-published port:
-
-```bash
-cp docker-compose.override.yml.example docker-compose.override.yml
-# edit the hostnames inside it, then:
-docker compose up -d --build
-```
-
-`docker compose` auto-merges `docker-compose.override.yml` (gitignored, never
-clobbered by a `git pull`) on top of `docker-compose.yml`, so nothing in the tracked
-compose file needs hand-editing. That routing lives entirely in your own Traefik
-config; nothing in this repo assumes or ships one.
-
-An optional Cloudflare Tunnel deployment can expose the dashboard at the
-`APP_URL` hostname. Set `STATIC_ASSET_HOSTS` to the externally exposed hostname
-so remote requests use the built Vite assets instead of exposing the
-development server. Run `npm run build` after frontend changes intended for
-remote access.
-
 ## Local development
 
 For development work, use the local development Compose setup. Requires Docker. Nothing
@@ -214,6 +191,9 @@ docker exec -u www-data homie-app php artisan homie:make-admin  # create your lo
 docker compose run --rm vite npm install           # first time only
 docker compose run --rm vite npm run build
 ```
+
+The dev container assumes your host user is UID 1000 (it creates `www-data` with that
+UID so bind-mounted files stay yours); on another UID, adjust `docker/setup-dev-container.sh`.
 
 Site: http://localhost:8090 (override the host port with `APP_PORT` in `.env` if
 8090 collides with something else already running)
@@ -266,6 +246,29 @@ as root and end up with permission errors editing files afterward, fix ownership
 ```bash
 docker exec -u root homie-app chown -R 1000:1000 /var/www/html
 ```
+
+### Optional: Traefik hostnames and Cloudflare Tunnel
+
+This repo doesn't ship any Traefik network or routing — the steps above are enough on
+their own. If you do run a Traefik instance and want nicer hostnames instead of the
+published port (this extends the local development Compose file above):
+
+```bash
+cp docker-compose.override.yml.example docker-compose.override.yml
+# edit the hostnames inside it, then:
+docker compose up -d --build
+```
+
+`docker compose` auto-merges `docker-compose.override.yml` (gitignored, never
+clobbered by a `git pull`) on top of `docker-compose.yml`, so nothing in the tracked
+compose file needs hand-editing. That routing lives entirely in your own Traefik
+config; nothing in this repo assumes or ships one.
+
+An optional Cloudflare Tunnel deployment can expose the dashboard at the
+`APP_URL` hostname. Set `STATIC_ASSET_HOSTS` to the externally exposed hostname
+so remote requests use the built Vite assets instead of exposing the
+development server. Run `npm run build` after frontend changes intended for
+remote access.
 
 ## Shell command execution
 

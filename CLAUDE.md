@@ -2,9 +2,9 @@
 
 Self-hosted home lab dashboard. Laravel 13 + Livewire 4 (SFC) + Alpine.js + Tailwind v4 +
 Flux UI (free tier). SQLite. Dockerized dev environment; reachable via a published
-port (`APP_PORT`, default 8090) out of the box, or via Andres's own Traefik +
-ac495.net routing (external to this repo, not shipped or assumed) when working on
-his machine specifically.
+port (`APP_PORT`, default 8090) out of the box. Any reverse-proxy or tunnel routing is
+external to this repo and never assumed (the maintainer's own is in the untracked
+`CLAUDE.local.md`).
 
 ## UI components
 
@@ -68,7 +68,7 @@ returns `{status, summary, stats[], raw}` plus three optional keys (`downloaded[
 `stats` is a small list of label/value pairs rendered as chips on the card-api-widget
 instead of the generic "HTTP 200" line. Endpoint shapes were verified against the
 gethomepage/homepage widget source (a mature OSS project with working integrations for
-all of these) plus live calls against Andres's own instances — not guessed. Notable
+all of these) plus live calls against real instances — not guessed. Notable
 per-provider quirks:
 - Sonarr: `/api/v3/series` (count), `/api/v3/queue` and `/api/v3/wanted/missing` both
   paginated with a `totalRecords` field — request `pageSize=1` to avoid pulling the
@@ -359,7 +359,7 @@ afterward, it doesn't self-heal from the DB alone.
 No lab-specific machine name, hostname, IP, service, or credential should ever be
 hardcoded in application code, config defaults, seeders, or views. Anyone should be
 able to clone this repo and get an empty dashboard they configure themselves through
-the UI/database — not one pre-wired to Andres's home lab.
+the UI/database — not one pre-wired to the maintainer's home lab.
 
 - Services, machines, groups, card order, output-card commands, and API connection
   details are all rows in the database, never PHP constants or `.env` values baked
@@ -378,15 +378,9 @@ the UI/database — not one pre-wired to Andres's home lab.
   (`profiles: ["test"]`, never started by a plain `docker compose up`), exists solely
   to run browser tests — see "Browser testing" under Testing below for why it's a
   separate image rather than something added to `homie-app` itself.
-- `app` publishes `${APP_PORT:-8090}:80` — found missing during a hardcoding audit:
-  the app's Traefik `Host()` router label was removed in an earlier commit (LAN
-  access moved to `ac495.net`, routed from a file outside this repo,
-  `~/www/traefik/dynamic/ac495-sites.yml`), but nothing replaced it, so a fresh
-  clone following this repo's own README had no way to reach the app at all —
-  `vite`'s equivalent label was left behind as stale documentation of the old
-  scheme, not a working path for a new clone either. The published port is the
-  distributable fallback; Traefik/ac495.net remains available on top of it for
-  Andres's own machine specifically, never assumed.
+- `app` publishes `${APP_PORT:-8090}:80` so a fresh clone following the README can
+  reach the app without any proxy. Traefik hostnames are an optional layer on top
+  (`docker-compose.override.yml.example`), never assumed.
 - Run PHP tooling via `docker exec -u www-data homie-app ...` — use `-u www-data`
   (not root) so files stay owned by UID 1000, matching the host user on the bind mount.
   Composer script wrappers (`composer pint`, `phpstan`, `rector`, `pest`) already do this.
@@ -399,9 +393,9 @@ the UI/database — not one pre-wired to Andres's home lab.
   (`machines.ssh_private_key`), decrypted to a 0600 temp file only for the duration of a
   scan — discovery itself never reads from `storage/ssh/`.
 - `MachineObserver` (via `MachineSshKeySync`) auto-syncs that same key into
-  `storage/ssh/{slug}` (e.g. `storage/ssh/media`) in plaintext, 0600, on every save —
+  `storage/ssh/{slug}` (e.g. `storage/ssh/nas`) in plaintext, 0600, on every save —
   and deletes it if the key is cleared or the machine is deleted. This is a deliberate
-  security tradeoff, confirmed with Andres before building: the DB copy stays encrypted
+  security tradeoff, confirmed with the maintainer before building: the DB copy stays encrypted
   and is decrypted only transiently for scans, but the synced copy sits on disk
   permanently (still container-internal, but readable by anyone with filesystem access,
   and it survives container rebuilds since `storage/ssh` is host-mounted) — done to let
@@ -413,8 +407,9 @@ the UI/database — not one pre-wired to Andres's home lab.
 
 Default PHPStan level 6, Pint `laravel` preset, Rector `UP_TO_PHP_84` + code quality/dead
 code sets (dry-run only — never auto-apply without reviewing the diff). Pre-commit hook
-(symlinked from `~/.claude/hooks/laravel-pre-commit.sh`) runs Pint (auto-fix) → PHPStan
-(block) → Rector dry-run (block) → Pest (block) on staged PHP files.
+(the maintainer's local Claude Code hook; not part of this repo) runs Pint (auto-fix) →
+PHPStan (block) → Rector dry-run (block) → Pest (block) on staged PHP files. CI runs the
+same checks.
 
 - The pre-commit hook's `docker exec` calls (Rector and Pest) run as the container's
   *default* user, which is **root** — not `www-data` (confirmed via `docker exec
@@ -464,7 +459,7 @@ proxies to Traefik's actual container/network CIDR is still tidier, just no long
 Homie ships with a real login now (it used to have none — see the "Current
 limitations" history in README.md before this was added). `app/Http/Middleware/
 RequireAuthentication`, appended to the `web` group in `bootstrap/app.php` after
-`ResolveDemoDatabase`, requires an authenticated `web`-guard session for every route
+`ResolveDemoDatabase` (which is prepended, so it runs first), requires an authenticated `web`-guard session for every route
 except `/login` and `/logout` — unconditionally, including demo mode. Demo mode used
 to gate access with a separate mechanism (HTTP Basic Auth); it was switched to reuse
 this same login instead, against a shared admin credential seeded into every visitor's
@@ -520,12 +515,10 @@ in `tests/Feature/DemoModeTest.php`, not duplicated here.
 ## Demo mode
 
 `config('homie.demo_mode')` (env `DEMO_MODE`, off by default) lets the exact same image
-serve a public, credential-gated demo in addition to normal dev/production use — see
-the (external, outside this repo) plan at
-`.ai/plans/2026-09-06-demo-sites-and-cd/PLAN.md` in the `www` workspace root for the
-full recruiter-demo/CD rationale. One middleware, a no-op unless demo mode is on,
-appended to the `web` group in `bootstrap/app.php` before `RequireAuthentication` (order
-matters — the DB must be resolved to the visitor's own copy before the login check
+serve a public, credential-gated demo in addition to normal dev/production use
+(`docker-compose.demo.yml` is that deployment). One middleware, a no-op unless demo mode
+is on, prepended to the `web` group in `bootstrap/app.php`, so it runs before
+`RequireAuthentication` (order matters — the DB must be resolved to the visitor's own copy before the login check
 queries the `users` table in it):
 
 - **`ResolveDemoDatabase`** — homie has no per-user data model at all, so concurrent
@@ -547,10 +540,9 @@ Cloudflare-Access/LAN requests — since removed). It now goes through the exact
 `RequireAuthentication` middleware and login page as any other deployment (see
 "Application auth" above), against a shared admin user already seeded into every
 visitor's own per-visitor copy — no extra plumbing needed since that row lives in the
-template `ResolveDemoDatabase` copies. Switched deliberately: a recruiter/visitor
+template `ResolveDemoDatabase` copies. Switched deliberately: a visitor
 clicking through to the demo now sees the actual login feature being demonstrated,
-rather than a generic browser Basic Auth popup for a feature the audit specifically
-flagged as the thing to build. The owner bypass was dropped along with it — the demo
+rather than a generic browser Basic Auth popup. The owner bypass was dropped along with it — the demo
 site has no special-cased access for its own owner anymore, everyone goes through the
 same login.
 
@@ -563,7 +555,7 @@ same login.
   terminal attached when `BuildDemoTemplate` runs it from `docker/entrypoint-prod.sh`
   on every boot. Passing either option explicitly still overrides this — a self-hoster
   running with demo mode on can still set their own credentials.
-- **`docker-compose.prod.yml` hardcodes `DEMO_MODE: "true"`** on both the `app` and
+- **`docker-compose.demo.yml` hardcodes `DEMO_MODE: "true"`** on both the `app` and
   `scheduler` services (`environment:`, which overrides whatever `env_file: .env` sets
   for the same key) — this compose file only ever runs the demo deployment (see its own
   top comment), so a missing/wrong `DEMO_MODE` in the host's `.env` can no longer
@@ -617,8 +609,7 @@ so even a direct push needs that exact commit to have passed CI first. Repo:
 
 ## Testing
 
-199 Pest tests (Feature + Unit, plus 4 more in the separate browser suite) as of this
-writing, covering happy *and* sad paths for
+The Pest suite (Feature + Unit, plus a separate browser suite) covers happy *and* sad paths for
 essentially every Livewire component and support class — cards, groups, machines,
 discovery (Docker API + SSH, including the host-network/Traefik-label edge cases),
 backup import/export, icon search, CSRF/middleware, and every `ApiProvider` fetcher
@@ -653,10 +644,9 @@ A few testing patterns worth knowing:
 
 `tests/Browser/` holds real-browser smoke tests (`pestphp/pest-plugin-browser` +
 Playwright/Chromium), run via `composer pest:browser`. This does **not** run inside
-the regular `homie-app` container — that image also serves production over the
-tunnel (see "Container / infra" above), and browser testing needs a full Node.js
-runtime plus a ~300MB Chromium binary that have no business shipping in a production
-PHP-apache image. Instead, `docker-compose.yml` defines a second service, `app-test`
+the regular `homie-app` container — that is the dev image, built from the same `base`
+stage the production image (`docker/Dockerfile.prod`) uses, and browser testing needs a
+full Node.js runtime plus a ~300MB Chromium binary that have no business there. Instead, `docker-compose.yml` defines a second service, `app-test`
 (`profiles: ["test"]`, so a plain `docker compose up` never starts it), built from a
 `test` stage layered on top of the same `base` stage `app` uses — a YAML anchor
 (`&app-dockerfile`) keeps the inline multi-stage Dockerfile defined once and shared
@@ -679,7 +669,7 @@ unconditionally registers a global `afterEach` hook (scoped to the whole test ro
 not `tests/Browser`) that eagerly constructs a `ServerManager` singleton — which
 calls `socket_create_listen()` for port allocation — after *every single test*,
 regardless of whether that test ever calls `visit()`. Since `vendor/` is shared via
-the bind mount between `homie-app` and `app-test`, this meant the regular 169-test
+the bind mount between `homie-app` and `app-test`, this meant the regular
 suite went from all-green to all-failing (`Call to undefined function
 Pest\Browser\Support\socket_create_listen()`) the moment the package was required,
 until `sockets` was added to `homie-app`'s own PHP extensions too (in
@@ -707,13 +697,14 @@ running `composer pest:browser` locally; CI's `browser` job builds it as part of
 ## CI (GitHub Actions)
 
 `.github/workflows/ci.yml` runs on every push to `main` and every pull request,
-three independent jobs (no `needs:`, so one failing doesn't block the others from
-reporting):
+three independent check jobs (no `needs:`, so one failing doesn't block the others from
+reporting), plus a `publish-ghcr` job that needs all three and only builds and pushes the
+demo image:
 - **php**: mirrors the local pre-commit hook's order (Pint `--test` → PHPStan →
   Rector `--dry-run` → Pest), on PHP 8.3 — the floor version declared in
   `composer.json` (`"php": "^8.3"`), not the 8.5 the dev container happens to run,
   so CI actually proves the "clone and it works" claim in the distributability
-  principle above rather than only testing Andres's own environment. Uses
+  principle above rather than only testing the maintainer's own environment. Uses
   `shivammathur/setup-php` directly on the runner (no Docker) since GitHub-hosted
   runners don't need the container indirection local dev uses for host/UID
   reasons. Its extensions list includes `sockets` — see "Testing" above for why

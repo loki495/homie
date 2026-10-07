@@ -1,9 +1,11 @@
-# Demo output-card SSH sandbox — for review before deployment
+# Demo output-card SSH sandbox
 
 This container exists so a public demo visitor can add a real "output card"
 (homie's arbitrary-shell-command-over-SSH feature) and see it actually work,
 without ever touching a real machine. It is intentionally built to do almost
-nothing. Read this whole file before deploying it anywhere.
+nothing. Read this whole file before deploying it anywhere. Threat model: a
+visitor controls the command string, nothing else; the worst outcome of a
+full break is a shell in an empty, isolated container.
 
 ## What it can do
 
@@ -41,11 +43,10 @@ Four independent layers, each sufficient on its own, stacked anyway:
    for) is only ever compared, never evaluated, interpolated into a shell
    string, or passed to `sh -c`. Every branch `exec`s a real binary directly
    with fixed or already-validated arguments.
-4. **Container/Docker-level** (see Task 4d in the plan — apply the same
-   hardening as every other demo container when this gets wired into compose):
+4. **Container/Docker-level** (same hardening as every other demo container):
    non-root process where possible, `cap_drop: ALL`, `security_opt:
    [no-new-privileges:true]`, its own Docker network with **zero** route to
-   anything else on `media` (not the other demo containers, not the host, not
+   anything else on the host (not the other demo containers, not the host, not
    the internet beyond what sshd itself needs), no volumes, no Docker socket.
    Even a hypothetical full break of layers 1-3 lands in an empty, isolated
    container with nowhere to go.
@@ -59,11 +60,8 @@ Four independent layers, each sufficient on its own, stacked anyway:
   to end up encrypted in the demo template's `machines.ssh_private_key`
   column (same encryption-at-rest homie already uses for every real
   machine's key) so a visitor's pre-seeded or self-created output card can
-  actually connect. Wiring: **not done yet** — needs a small addition to
-  `demo:build-template` (or a dedicated demo-seeding step) that reads the
-  private key from an env var/mounted file and creates the corresponding
-  `Machine` row. Do this as a follow-up once the container itself is
-  approved, not before.
+  actually connect. `DemoDashboardSeeder` reads it from
+  `DEMO_SANDBOX_SSH_PRIVATE_KEY` (see Status below).
 - Worst case if this specific private key ever leaked: an attacker could SSH
   in and run `uptime`. That's the entire blast radius — which is the whole
   point of building it this way.
@@ -144,10 +142,8 @@ configuration, not just the unrestricted build from earlier in this file.
 - Added to `docker-compose.yml` as `output-sandbox` (`profiles: ["demo"]`,
   its own `sandbox-net` network shared only with `app` - no route to
   `mock-sonarr`/`mock-radarr`/`vite`/anything else, per the design above).
-- The keypair was regenerated (the first one used above got deleted during
-  cleanup before the Machine-row wiring happened) and re-verified against
-  the exact final `cap_drop`/`cap_add` configuration - every test in this
-  file passed against the actual keypair now committed here.
+- The tests above were re-run against the exact final `cap_drop`/`cap_add`
+  configuration and the keypair whose public half is committed here.
 - In a deployment, reach it through the Compose service name
   (`sandbox@output-sandbox:2222`) from the Homie app network. Do not publish a
   host or LAN address in deployment documentation.
@@ -156,7 +152,7 @@ configuration, not just the unrestricted build from earlier in this file.
   `config/homie.php`'s "Demo output-card SSH sandbox" section) - skipped
   entirely otherwise. Covered by
   `tests/Feature/DemoDashboardSeederTest.php`.
-- **Real gotcha found running this for real, not just in tests**: run
+- **Gotcha**: run
   `demo:build-template` as `www-data`
   (`docker exec -u www-data ... php artisan demo:build-template`), never as
   root. `MachineObserver` syncs the private key to `storage/ssh/{slug}`
@@ -170,6 +166,6 @@ configuration, not just the unrestricted build from earlier in this file.
   artisan/composer command - see this repo's `CLAUDE.md`, "Container /
   infra").
 - End-to-end verified (not just unit tests): `demo:build-template` run
-  against media's live sandbox, then the exact seeded command executed via
+  against a live sandbox, then the exact seeded command executed via
   `Illuminate\Support\Facades\Process::run()` as `www-data` - real `uptime`
   output came back, exit code 0.

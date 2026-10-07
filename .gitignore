@@ -34,3 +34,6 @@ todo
 /docker-compose.override.yml
 /coverage.xml
 /.ai/
+
+# Maintainer-specific agent notes (infra, hosts); never tracked
+/CLAUDE.local.md

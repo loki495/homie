@@ -1,3 +1,3 @@
-# Codex project instructions
+# Agent instructions
 
-Read `CLAUDE.md` completely as maintained project context. Apply `/home/andres/AGENTS.md` and map Claude workflows to `claude-import-*` Codex skills.
+Read `CLAUDE.md` completely; it is the maintained project context for every coding agent.

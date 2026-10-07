@@ -163,7 +163,7 @@ jobs:
 
       # docker-compose.yml's `app` service is dev-oriented (bind-mounted source,
       # dockerfile_inline never COPYs the app in) — a real deployable image
-      # comes from docker/Dockerfile.prod + docker-compose.prod.yml instead,
+      # comes from docker/Dockerfile.prod + docker-compose.demo.yml instead,
       # which bakes the app in and drops the bind mount (see that compose
       # file's own top comment for why this distinction matters for Watchtower).
       - name: Build and push production image
@@ -176,11 +176,13 @@ jobs:
             ghcr.io/loki495/homie:demo
             ghcr.io/loki495/homie:sha-${{ steps.vars.outputs.short_sha }}
 
-      # Fires Watchtower's own update check on media instead of waiting on its
-      # 24h poll interval - see dotfiles/cd-trigger for the endpoint itself
-      # (token-gated, fire-and-forget). continue-on-error: a missed trigger
-      # just means Watchtower catches this image on its next scheduled poll -
-      # never worth failing an otherwise-successful publish over.
-      - name: Trigger Watchtower on media
+      # Optional: nudge the demo host's Watchtower to pull the new image now
+      # instead of waiting on its poll interval. A no-op unless the repo has a
+      # CD_TRIGGER_URL secret; continue-on-error because a missed trigger only
+      # delays the update until Watchtower's next scheduled poll.
+      - name: Trigger Watchtower
         continue-on-error: true
-        run: curl -sS -m 15 "${{ secrets.CD_TRIGGER_URL }}"
+        env:
+          CD_TRIGGER_URL: ${{ secrets.CD_TRIGGER_URL }}
+        run: |
+          if [ -n "$CD_TRIGGER_URL" ]; then curl -sS -m 15 "$CD_TRIGGER_URL"; fi

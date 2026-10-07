@@ -563,7 +563,7 @@ same login.
   terminal attached when `BuildDemoTemplate` runs it from `docker/entrypoint-prod.sh`
   on every boot. Passing either option explicitly still overrides this — a self-hoster
   running with demo mode on can still set their own credentials.
-- **`docker-compose.prod.yml` hardcodes `DEMO_MODE: "true"`** on both the `app` and
+- **`docker-compose.demo.yml` hardcodes `DEMO_MODE: "true"`** on both the `app` and
   `scheduler` services (`environment:`, which overrides whatever `env_file: .env` sets
   for the same key) — this compose file only ever runs the demo deployment (see its own
   top comment), so a missing/wrong `DEMO_MODE` in the host's `.env` can no longer

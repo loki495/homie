@@ -143,6 +143,35 @@ credentials in a restored database cannot be decrypted.
 The production Compose file builds the application image from this checkout. Set
 `HOMIE_IMAGE` to a trusted image reference if you maintain your own image registry.
 
+### Backups, upgrades, and lost keys
+
+All persistent state is the `homie-storage` volume plus `.env.production`. To back up
+the volume, stop the stack so SQLite is not mid-write:
+
+```bash
+docker compose --env-file .env.production -f docker-compose.production.yml stop
+docker run --rm -v homie-production_homie-storage:/data -v "$PWD":/backup alpine \
+  tar czf /backup/homie-storage-$(date +%F).tar.gz -C /data .
+docker compose --env-file .env.production -f docker-compose.production.yml start
+```
+
+To restore, stop the stack, extract the archive into the volume with
+`tar xzf /backup/<file> -C /data` in the same `docker run` form, and start it again
+with the original `APP_KEY`.
+
+To upgrade, take a backup, check out the release tag you want, and rebuild. The
+container runs pending migrations on start:
+
+```bash
+git fetch --tags && git checkout <tag>
+docker compose --env-file .env.production -f docker-compose.production.yml up -d --build --wait
+```
+
+If `APP_KEY` is lost, stored SSH keys and API credentials cannot be decrypted. Set a
+new `APP_KEY`, sign in, export the configuration from the Backup tab, import that same
+file, then re-enter the SSH keys and API credentials: the export never includes
+secrets, so the import replaces the undecryptable ones with empty fields.
+
 ### If you run this behind Traefik
 
 This repo doesn't ship any Traefik network or routing — the steps above are enough on

@@ -11,6 +11,8 @@ use App\Models\Machine;
 use App\Support\Config\ConfigExporter;
 use App\Support\Config\ConfigImporter;
 use App\Support\Config\InvalidBackup;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Encryption\Encrypter;
 
 it('round-trips a full export back into matching groups, cards, and machines', function () {
     $group = Group::factory()->create(['name' => 'Media', 'sort_order' => 0]);
@@ -274,3 +276,22 @@ it('rejects an invalid backup before changing existing configuration', function 
         ->and([$group->fresh()?->getAttributes(), $card->fresh()?->getAttributes(), $machine->fresh()?->getAttributes()])
         ->toBe($before);
 })->with('invalid backup documents');
+
+it('recovers in place from a lost APP_KEY by exporting and re-importing, leaving secrets to re-enter', function () {
+    Machine::factory()->ssh()->create(['name' => 'NAS', 'ssh_private_key' => 'key-under-old-app-key']);
+    $card = Card::factory()->api()->create(['name' => 'Sonarr']);
+    CardApi::factory()->create(['card_id' => $card->id, 'api_key' => 'key-under-old-app-key']);
+    Model::encryptUsing(new Encrypter(Encrypter::generateKey('aes-256-cbc'), 'aes-256-cbc'));
+
+    try {
+        app(ConfigImporter::class)->import(app(ConfigExporter::class)->export());
+
+        $machine = Machine::query()->sole();
+        $machine->update(['ssh_private_key' => 'key-under-new-app-key']);
+
+        expect($machine->fresh()->ssh_private_key)->toBe('key-under-new-app-key')
+            ->and(Card::query()->sole()->api->api_key)->toBeNull();
+    } finally {
+        Model::encryptUsing(null);
+    }
+});

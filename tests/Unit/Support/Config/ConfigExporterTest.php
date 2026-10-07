@@ -9,6 +9,8 @@ use App\Models\CardOutput;
 use App\Models\Group;
 use App\Models\Machine;
 use App\Support\Config\ConfigExporter;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Encryption\Encrypter;
 
 it('exports groups with their cards, nested under sort order', function () {
     $group = Group::factory()->create(['name' => 'Media', 'sort_order' => 0, 'collapsed' => true]);
@@ -73,6 +75,24 @@ it('exports machines without the ssh private key value', function () {
     expect($data['machines'][0]['name'])->toBe('NAS')
         ->and($data['machines'][0]['has_ssh_private_key'])->toBeTrue()
         ->and(json_encode($data))->not->toContain('BEGIN OPENSSH PRIVATE KEY');
+});
+
+it('still exports, with has_* flags intact, after the APP_KEY that encrypted the secrets is lost', function () {
+    Machine::factory()->ssh()->create(['ssh_private_key' => 'old-key-secret']);
+    $card = Card::factory()->api()->create();
+    CardApi::factory()->create(['card_id' => $card->id, 'api_key' => 'old-api-secret', 'password' => 'old-password']);
+
+    Model::encryptUsing(new Encrypter(Encrypter::generateKey('aes-256-cbc'), 'aes-256-cbc'));
+
+    try {
+        $data = app(ConfigExporter::class)->export();
+    } finally {
+        Model::encryptUsing(null);
+    }
+
+    expect($data['machines'][0]['has_ssh_private_key'])->toBeTrue()
+        ->and($data['ungrouped_cards'][0]['api']['has_api_key'])->toBeTrue()
+        ->and($data['ungrouped_cards'][0]['api']['has_password'])->toBeTrue();
 });
 
 it('includes a version and exported_at timestamp', function () {

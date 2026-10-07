@@ -75,7 +75,7 @@ class ConfigExporter
                 'discovery_method' => $machine->discovery_method->value,
                 'ssh_user' => $machine->ssh_user,
                 'ssh_port' => $machine->ssh_port,
-                'has_ssh_private_key' => $machine->ssh_private_key !== null,
+                'has_ssh_private_key' => $machine->getRawOriginal('ssh_private_key') !== null,
             ];
         }
 
@@ -108,8 +108,8 @@ class ConfigExporter
                 'base_url' => $card->api->base_url,
                 'auth_type' => $card->api->auth_type,
                 'username' => $card->api->username,
-                'has_api_key' => $card->api->api_key !== null,
-                'has_password' => $card->api->password !== null,
+                'has_api_key' => $card->api->getRawOriginal('api_key') !== null,
+                'has_password' => $card->api->getRawOriginal('password') !== null,
             ] : null,
         ];
     }

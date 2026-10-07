@@ -5,17 +5,20 @@ in spare time, so response times on issues and PRs may vary — but contribution
 
 ## Getting set up
 
-Follow the [README](README.md#quick-start) to get a local instance running with Docker Compose.
+Follow the [README](README.md#local-development) to get a local instance running with Docker Compose.
 
 ## Before you open a PR
 
-Run the full check suite and make sure it's clean:
+Branch off `main` and open a pull request against it. CI runs the checks below plus the
+frontend build and the browser tests on every PR, and `main` only accepts commits that
+have passed them. Run them locally first:
 
 ```bash
-composer pint      # code style (auto-fixes)
-composer phpstan    # static analysis
-composer rector      # modernization, dry-run only
-composer pest        # test suite
+composer pint         # code style (auto-fixes)
+composer phpstan      # static analysis
+composer rector       # modernization, dry-run only
+composer pest         # test suite
+composer pest:browser # real-browser smoke tests
 ```
 
 - Keep PRs focused — one feature or fix per PR is easier to review than a bundle of unrelated changes.

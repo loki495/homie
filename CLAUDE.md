@@ -592,9 +592,11 @@ session, need the session to pick the DB) since `StartSession` runs before
 
 ## Git
 
-Single-branch: `main`. This project intentionally opts out of the global master/local
-branch model (see `~/.claude/CLAUDE.md`) — there's no separate production deployment to
-mirror, so work happens directly on `main`. Repo: `loki495/homie` on GitHub (public).
+`main` only, no `local` branch: this project opts out of the master/local model since
+there is no separate production deployment to mirror. Changes land through pull
+requests from short-lived branches; `main` is protected by a required CI status check,
+so even a direct push needs that exact commit to have passed CI first. Repo:
+`loki495/homie` on GitHub (public).
 
 ## Testing
 

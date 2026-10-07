@@ -18,6 +18,9 @@
         </include>
     </source>
     <php>
+        <env name="AUTO_LOGIN_EMAIL" value=""/>
+        <env name="AUTO_LOGIN_LAN" value="false"/>
+        <env name="AUTO_LOGIN_OWNER_EMAIL" value=""/>
         <env name="APP_ENV" value="testing"/>
         <env name="APP_MAINTENANCE_DRIVER" value="file"/>
         <env name="BCRYPT_ROUNDS" value="4"/>

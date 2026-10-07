@@ -318,6 +318,13 @@ up, so secrets simply never leave the database. Runtime/cache fields (`last_outp
 `cached_data`, `last_fetched_at`, ...) are excluded too — this is a config backup, not
 a full table dump, and all of those regenerate on next poll/fetch.
 
+The `has_*` flags read the stored ciphertext (`getRawOriginal()`), never the decrypted
+attribute: decrypting just to test for null made the export throw once `APP_KEY` was
+lost, and export then re-import is the documented recovery for that (the import
+recreates every row with empty secrets to re-enter). Editing a machine or API card
+under a new key still throws until that recovery is done, because Eloquent's dirty
+check decrypts the original value of an encrypted cast.
+
 Both classes build their arrays with explicit `foreach` loops rather than
 `Collection::map()` chains — the latter left Larastan unable to resolve the closures'
 return types here, same class of issue as the `collect()`-on-mixed-data problem

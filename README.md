@@ -167,11 +167,10 @@ git fetch --tags && git checkout <tag>
 docker compose --env-file .env.production -f docker-compose.production.yml up -d --build --wait
 ```
 
-If `APP_KEY` is lost, stored SSH keys and API credentials cannot be decrypted, and
-an existing install cannot export its configuration either. Keep a recent in-app
-export (Backup tab) alongside your volume backups: with it, recovery is a new
-`APP_KEY`, an empty volume, an import of that export, and re-entering the secrets,
-which exports never include.
+If `APP_KEY` is lost, stored SSH keys and API credentials cannot be decrypted. Set a
+new `APP_KEY`, sign in, export the configuration from the Backup tab, import that same
+file, then re-enter the SSH keys and API credentials: the export never includes
+secrets, so the import replaces the undecryptable ones with empty fields.
 
 ### If you run this behind Traefik
 

@@ -334,7 +334,14 @@ documented above for `MachineDiscovery`/`DashboardIcons`.
 `Enum::tryFrom()` for type/provider/discovery-method fields) rather than through
 Laravel's validator: this reads a user-supplied file that could be hand-edited, from
 an older export version, or just malformed, and a single bad row should be skipped
-with a warning rather than aborting the whole restore.
+with a warning rather than aborting the whole restore. The document envelope is the
+exception: a missing/unsupported `version`, or `groups`/`ungrouped_cards`/`machines`
+missing or not a list, throws `InvalidBackup` *before* the replacement transaction
+starts, because a full replace driven by a truncated or foreign file would otherwise
+wipe the existing configuration and recreate nothing. The Backup tab shows that as a
+translated error (`lang/en/backup.php`). A well-formed backup with empty lists is
+still accepted and clears the configuration, since that is what an export of an empty
+dashboard looks like.
 
 Verified live against the real dashboard: exported the actual production-data SQLite
 file, re-imported it through the browser (confirm dialog and all), and diffed the
@@ -446,9 +453,11 @@ cookie removes the need for any exemption, so the middleware and its test are go
 Laravel's normal token check now runs on every request — strictly more protection than
 before, not less.
 
-`trustProxies(at: '*')` remains, but is no longer load-bearing for security: it now only
-affects the accuracy of the client IP in logs. Narrowing it to Traefik's actual
-container/network CIDR is still tidier, just no longer urgent.
+`trustProxies(at: '*')` remains and makes `$request->ip()` client-controllable, so it must
+never feed a trust decision; it only affects the client IP in logs. The auto-login LAN check
+(`AutoLoginForTrustedRequests`) reads the socket peer (`REMOTE_ADDR`) for that reason, and
+`tests/Feature/AutoLoginTest.php` covers a spoofed `X-Forwarded-For`. Narrowing the trusted
+proxies to Traefik's actual container/network CIDR is still tidier, just no longer urgent.
 
 ## Application auth
 
@@ -461,6 +470,14 @@ to gate access with a separate mechanism (HTTP Basic Auth); it was switched to r
 this same login instead, against a shared admin credential seeded into every visitor's
 own per-visitor database copy — see "Demo mode" below for the full reasoning and the
 history of what this replaced.
+
+**Livewire requests are exempted by route, never by header.** The update endpoint
+(`*livewire.update`) skips the login redirect so the login form's own submit works, but
+the `X-Livewire` header is client-controlled: exempting on it let a guest `GET /` with
+that header render the whole dashboard and collect signed snapshots of its components.
+`RequireAuthentication` is also registered via `Livewire::addPersistentMiddleware()` in
+`AppServiceProvider`, so each update re-runs it against the route the component was
+loaded from. Tests: the last two cases in `tests/Feature/AuthenticationTest.php`.
 
 **Single admin, not a user-management system.** Homie has no per-user data model —
 cards, groups, and machines aren't owned by anyone — so there is exactly one
@@ -592,9 +609,11 @@ session, need the session to pick the DB) since `StartSession` runs before
 
 ## Git
 
-Single-branch: `main`. This project intentionally opts out of the global master/local
-branch model (see `~/.claude/CLAUDE.md`) — there's no separate production deployment to
-mirror, so work happens directly on `main`. Repo: `loki495/homie` on GitHub (public).
+`main` only, no `local` branch: this project opts out of the master/local model since
+there is no separate production deployment to mirror. Changes land through pull
+requests from short-lived branches; `main` is protected by a required CI status check,
+so even a direct push needs that exact commit to have passed CI first. Repo:
+`loki495/homie` on GitHub (public).
 
 ## Testing
 
@@ -607,6 +626,11 @@ including its failure modes (unreachable, non-2xx, malformed history). When audi
 for coverage gaps, check what's actually there first — this suite is not a blank slate.
 
 A few testing patterns worth knowing:
+- **`phpunit.xml` pins `AUTO_LOGIN_EMAIL`/`AUTO_LOGIN_LAN`/`AUTO_LOGIN_OWNER_EMAIL`**
+  to empty/false. Laravel's dotenv never overwrites a variable phpunit already set, so
+  this keeps a developer's own `.env` auto-login settings out of the suite; CI has no
+  `.env`, which is why a leak there passed CI and failed only locally. Pin any new
+  `.env` setting that changes request behavior the same way.
 - **`tests/Feature/HomeTest.php`** calls `$this->withoutVite()` before hitting `/`,
   since `home.blade.php` is the only view that renders `@vite` and no built
   `public/build/manifest.json` exists in a fresh CI checkout — `withoutVite()` swaps

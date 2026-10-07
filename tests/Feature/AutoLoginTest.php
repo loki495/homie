@@ -61,3 +61,36 @@ it('signs in when Cloudflare Access asserts the owner email, not on a mismatch',
         ->get('/')->assertOk();
     $this->assertAuthenticated();
 });
+
+it('ignores a spoofed X-Forwarded-For when judging whether a request is on the LAN', function (): void {
+    /** @var TestCase $this */
+    config(['homie.auto_login_lan' => true, 'homie.auto_login_email' => 'owner@example.com']);
+
+    $this->call('GET', '/', server: ['REMOTE_ADDR' => '8.8.8.8', 'HTTP_X_FORWARDED_FOR' => '192.168.1.50'])
+        ->assertRedirect('/login');
+    $this->assertGuest();
+});
+
+it('still signs in a private peer whose forwarded client address is public', function (): void {
+    /** @var TestCase $this */
+    config(['homie.auto_login_lan' => true, 'homie.auto_login_email' => 'owner@example.com']);
+
+    $this->call('GET', '/', server: ['REMOTE_ADDR' => '172.18.0.2', 'HTTP_X_FORWARDED_FOR' => '8.8.8.8'])->assertOk();
+    $this->assertAuthenticated();
+});
+
+it('keeps Livewire updates working for an auto-logged-in LAN request', function (): void {
+    /** @var TestCase $this */
+    config(['homie.auto_login_lan' => true, 'homie.auto_login_email' => 'owner@example.com']);
+    $server = ['REMOTE_ADDR' => '192.168.1.50'];
+
+    $html = (string) $this->call('GET', '/', server: $server)->assertOk()->getContent();
+    preg_match('/wire:snapshot="([^"]+)"/', $html, $m);
+    expect($m)->not->toBeEmpty();
+    auth()->logout();
+    app('auth')->forgetGuards();
+
+    $this->call('POST', route('default-livewire.update'), server: $server + ['HTTP_X_LIVEWIRE' => '1', 'CONTENT_TYPE' => 'application/json'], content: json_encode([
+        'components' => [['snapshot' => html_entity_decode($m[1]), 'updates' => [], 'calls' => []]],
+    ]))->assertOk();
+});

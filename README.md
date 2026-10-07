@@ -13,6 +13,8 @@ Built to be **distributable**: no service, machine, or credential is hardcoded a
 in the app. Everything — services, machine targets, output-card commands, API
 connections, card order, and groups — is user-configured data, not code.
 
+**Live demo:** <https://homie-demo.ac495.net> — sample data only; the login page pre-fills the shared demo credentials, and each visitor gets a private copy of the data.
+
 ## Screenshots
 
 | Light | Dark |
@@ -73,6 +75,8 @@ real dashboard fills in with whatever services you configure.
   everything currently configured, it doesn't merge
 
 ## Major implementation decisions
+
+Longer write-ups of the harder problems are in [docs/engineering-notes.md](docs/engineering-notes.md).
 
 - **Discovery prefers a container's Traefik label over its published port.** An earlier
   version required a host-published port even when a Traefik `Host()` label was present,
@@ -290,6 +294,11 @@ inside the app container:
 Anyone who can sign in can run any command with that access, so treat the admin login
 like shell access to the container, and only give Homie SSH keys for accounts whose
 permissions you are comfortable exposing that way. See [SECURITY.md](SECURITY.md).
+
+SSH host keys are not verified: discovery over SSH connects with
+`StrictHostKeyChecking=accept-new` and discards `known_hosts`, so the first (and every)
+connection trusts whatever answers. Only point it at machines on a network you trust.
+Output-card commands use whatever `ssh` options you write yourself.
 
 ## Owner auto-login (optional)
 

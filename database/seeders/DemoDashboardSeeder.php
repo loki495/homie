@@ -40,18 +40,6 @@ class DemoDashboardSeeder extends Seeder
         ]);
 
         Card::create([
-            'group_id' => $mediaGroup->id,
-            'name' => 'NZBGet',
-            'type' => CardType::Api,
-            'url' => 'http://nas.lan:6789',
-            'sort_order' => 1,
-        ])->api()->create([
-            'provider' => ApiProvider::Nzbget,
-            'base_url' => 'http://nas.lan:6789',
-            'api_key' => 'replace-with-real-api-key',
-        ]);
-
-        Card::create([
             'group_id' => $systemGroup->id,
             'name' => 'Disk space',
             'type' => CardType::Output,

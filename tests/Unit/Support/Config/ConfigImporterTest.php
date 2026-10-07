@@ -10,6 +10,7 @@ use App\Models\Group;
 use App\Models\Machine;
 use App\Support\Config\ConfigExporter;
 use App\Support\Config\ConfigImporter;
+use App\Support\Config\InvalidBackup;
 
 it('round-trips a full export back into matching groups, cards, and machines', function () {
     $group = Group::factory()->create(['name' => 'Media', 'sort_order' => 0]);
@@ -46,6 +47,7 @@ it('replaces existing groups, cards, and machines rather than merging', function
     Machine::factory()->create(['name' => 'Old machine']);
 
     app(ConfigImporter::class)->import([
+        'version' => 1,
         'groups' => [],
         'ungrouped_cards' => [['name' => 'New card', 'type' => 'link']],
         'machines' => [],
@@ -59,6 +61,9 @@ it('replaces existing groups, cards, and machines rather than merging', function
 
 it('warns that a re-entered api key is needed after import instead of importing a fake one', function () {
     $result = app(ConfigImporter::class)->import([
+        'version' => 1,
+        'groups' => [],
+        'machines' => [],
         'ungrouped_cards' => [[
             'name' => 'Sonarr',
             'type' => 'api',
@@ -79,6 +84,9 @@ it('warns that a re-entered api key is needed after import instead of importing 
 
 it('skips a group missing a name instead of crashing the whole import', function () {
     $result = app(ConfigImporter::class)->import([
+        'version' => 1,
+        'ungrouped_cards' => [],
+        'machines' => [],
         'groups' => [
             ['sort_order' => 0, 'cards' => []],
             ['name' => 'Valid group', 'sort_order' => 1, 'cards' => []],
@@ -92,6 +100,9 @@ it('skips a group missing a name instead of crashing the whole import', function
 
 it('skips a card with an unknown type instead of crashing the whole import', function () {
     $result = app(ConfigImporter::class)->import([
+        'version' => 1,
+        'groups' => [],
+        'machines' => [],
         'ungrouped_cards' => [
             ['name' => 'Bad card', 'type' => 'not-a-real-type'],
             ['name' => 'Good card', 'type' => 'link'],
@@ -106,6 +117,9 @@ it('skips a card with an unknown type instead of crashing the whole import', fun
 
 it('skips a machine with an unknown discovery method instead of crashing the whole import', function () {
     $result = app(ConfigImporter::class)->import([
+        'version' => 1,
+        'groups' => [],
+        'ungrouped_cards' => [],
         'machines' => [
             ['name' => 'Bad machine', 'host' => 'bad.lan', 'discovery_method' => 'telepathy'],
         ],
@@ -118,6 +132,9 @@ it('skips a machine with an unknown discovery method instead of crashing the who
 
 it('skips a machine missing a name or host instead of crashing the whole import', function () {
     $result = app(ConfigImporter::class)->import([
+        'version' => 1,
+        'groups' => [],
+        'ungrouped_cards' => [],
         'machines' => [
             ['host' => 'no-name.lan', 'discovery_method' => 'docker'],
             ['name' => 'No host', 'discovery_method' => 'docker'],
@@ -133,6 +150,9 @@ it('skips a machine missing a name or host instead of crashing the whole import'
 
 it('warns that a re-entered ssh private key is needed after import instead of importing a fake one', function () {
     $result = app(ConfigImporter::class)->import([
+        'version' => 1,
+        'groups' => [],
+        'ungrouped_cards' => [],
         'machines' => [
             ['name' => 'Media', 'host' => 'media.lan', 'discovery_method' => 'docker', 'has_ssh_private_key' => true],
         ],
@@ -146,6 +166,9 @@ it('warns that a re-entered ssh private key is needed after import instead of im
 
 it('skips a card missing a name instead of crashing the whole import', function () {
     $result = app(ConfigImporter::class)->import([
+        'version' => 1,
+        'groups' => [],
+        'machines' => [],
         'ungrouped_cards' => [
             ['type' => CardType::Link->value],
             ['name' => 'Valid card', 'type' => CardType::Link->value],
@@ -159,6 +182,9 @@ it('skips a card missing a name instead of crashing the whole import', function 
 
 it('warns that a re-entered password is needed after import instead of importing a fake one', function () {
     $result = app(ConfigImporter::class)->import([
+        'version' => 1,
+        'groups' => [],
+        'machines' => [],
         'ungrouped_cards' => [[
             'name' => 'NZBGet',
             'type' => 'api',
@@ -179,6 +205,9 @@ it('warns that a re-entered password is needed after import instead of importing
 
 it('skips an api connection with missing or invalid fields but keeps the card', function () {
     $result = app(ConfigImporter::class)->import([
+        'version' => 1,
+        'groups' => [],
+        'machines' => [],
         'ungrouped_cards' => [[
             'name' => 'Broken Api Card',
             'type' => 'api',
@@ -197,8 +226,17 @@ it('skips an api connection with missing or invalid fields but keeps the card', 
         ->and($result->warnings)->toContain('Card "Broken Api Card": skipped its API connection, missing or invalid fields.');
 });
 
-it('imports cleanly from an entirely empty payload without error', function () {
-    $result = app(ConfigImporter::class)->import([]);
+it('restores a properly formatted empty backup and clears existing data', function () {
+    $backup = app(ConfigExporter::class)->export();
+    Group::factory()->create();
+    Card::factory()->create();
+    Machine::factory()->create();
+
+    $result = app(ConfigImporter::class)->import($backup);
+
+    expect(Group::count())->toBe(0)
+        ->and(Card::count())->toBe(0)
+        ->and(Machine::count())->toBe(0);
 
     expect($result->groups)->toBe(0)
         ->and($result->cards)->toBe(0)
@@ -208,6 +246,9 @@ it('imports cleanly from an entirely empty payload without error', function () {
 
 it('falls back to the array index for sort_order when a card omits it', function () {
     app(ConfigImporter::class)->import([
+        'version' => 1,
+        'groups' => [],
+        'machines' => [],
         'ungrouped_cards' => [
             ['name' => 'First', 'type' => CardType::Link->value],
             ['name' => 'Second', 'type' => CardType::Link->value],
@@ -217,3 +258,19 @@ it('falls back to the array index for sort_order when a card omits it', function
     expect(Card::where('name', 'First')->first()?->sort_order)->toBe(0)
         ->and(Card::where('name', 'Second')->first()?->sort_order)->toBe(1);
 });
+
+it('rejects an invalid backup before changing existing configuration', function (string $json, string $message) {
+    $group = Group::factory()->create();
+    $card = Card::factory()->create(['group_id' => $group->id]);
+    $machine = Machine::factory()->create();
+    $before = [$group->fresh()?->getAttributes(), $card->fresh()?->getAttributes(), $machine->fresh()?->getAttributes()];
+
+    expect(fn () => app(ConfigImporter::class)->import(json_decode($json, true)))
+        ->toThrow(InvalidBackup::class, $message);
+
+    expect(Group::count())->toBe(1)
+        ->and(Card::count())->toBe(1)
+        ->and(Machine::count())->toBe(1)
+        ->and([$group->fresh()?->getAttributes(), $card->fresh()?->getAttributes(), $machine->fresh()?->getAttributes()])
+        ->toBe($before);
+})->with('invalid backup documents');

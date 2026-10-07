@@ -66,7 +66,10 @@ real dashboard fills in with whatever services you configure.
 - Expandable/collapsible groups ("folders") of cards
 - Backup: export the whole config (groups, cards, scan targets) as one JSON file, and
   restore from it later or on a new box. API keys, passwords, and SSH private keys are
-  never included in the export — re-enter those after a restore. Importing replaces
+  never included in the export — re-enter those after a restore. Only version-1 backups
+  containing the groups, ungrouped cards, and machines lists are accepted; invalid
+  files leave existing configuration untouched. Individual invalid rows are still
+  skipped with warnings. Importing replaces
   everything currently configured, it doesn't merge
 
 ## Major implementation decisions
@@ -194,31 +197,6 @@ stays running day-to-day: an exception thrown before the login check runs (a bad
 request, a misconfigured `.env`) would still render a debug page — full stack trace,
 file paths, query bindings — to anyone who can reach the app at all, logged in or not.
 
-## Shell command execution
-
-Output cards run user-defined shell commands on a schedule. Here's what you need to know:
-
-**Local commands** (no SSH target):
-- Run inside the `homie-app` Docker container as user `www-data` (UID 1000)
-- Environment: inherit from the container's `.env` and Laravel config (e.g. `APP_DEBUG`, `DB_*` vars are not set)
-- Stdout/stderr: captured and displayed on the card
-- Timeout: 10 seconds — commands that take longer are killed and show "Command timed out after 10s"
-- Failures: exit codes other than 0 show "Command failed with exit code {code}"
-
-**Remote commands (via SSH)**:
-- Run on the target machine (specified in Discovery → SSH key)
-- User: whatever SSH key you provide — typically `root`, `www-data`, or a named user
-- Environment: inherit from the remote machine's shell profile (usually `/bin/sh`)
-- Same timeout and failure handling as local commands
-- SSH key must be saved in the Discovery tab before commands can run
-
-**Important**: output cards only work if:
-1. The target machine/port is reachable from the dashboard container
-2. SSH keys (for remote commands) are saved in the Discovery tab first
-3. The command itself is safe to run repeatedly — output cards refresh on every page load plus any configured interval
-
-See [SECURITY.md](SECURITY.md) for the security model and [CLAUDE.md](CLAUDE.md) for architectural details.
-
 ### Testing and code quality
 
 Run from the host — these wrap `docker exec` into the `homie-app` container:
@@ -234,8 +212,8 @@ composer rector:apply # apply rector changes (review the diff first)
 
 `pest:browser` runs in its own `app-test` Docker service (`docker compose --profile
 test ...`) rather than in `homie-app` — it needs Node.js and a Chromium binary that
-have no business being baked into the same image that also serves production over the
-tunnel. It builds on first run (~1–2 minutes, mostly downloading Chromium); after that
+have no business being baked into the image that serves the app.
+It builds on first run (~1–2 minutes, mostly downloading Chromium); after that
 it's fast. GitHub Actions runs all three suites — Pest, the frontend build, and the
 browser suite — on every push to `main` and every pull request; see
 `.github/workflows/ci.yml`.
@@ -255,6 +233,31 @@ as root and end up with permission errors editing files afterward, fix ownership
 ```bash
 docker exec -u root homie-app chown -R 1000:1000 /var/www/html
 ```
+
+## Shell command execution
+
+Output cards run the command text you configure, exactly as written, through `sh`
+inside the app container:
+
+- **When:** when the dashboard renders the card, then every N seconds while the page
+  stays open if the card has a refresh interval. Nothing runs while no one has the
+  dashboard open, and a run that would overlap one still in progress for the same card
+  is skipped (the last output is shown instead).
+- **As whom:** the web server user (`www-data`) in the app container, with the app's own
+  file access, which includes the SQLite database and the SSH keys synced to
+  `storage/ssh/`.
+- **Remote machines:** there is no separate remote mode. Write the `ssh` call into the
+  command, using the key synced for a machine saved in the **Discovery** tab, e.g.
+  `ssh -i /var/www/html/storage/ssh/nas user@nas.lan df -h`. That part then runs as the
+  SSH user on the remote machine.
+- **Output:** stdout is shown; when stdout is empty, stderr is shown instead. The exit
+  code is recorded with it.
+- **Timeout:** 10 seconds. A longer command is stopped and the card shows "Command timed
+  out after 10s."
+
+Anyone who can sign in can run any command with that access, so treat the admin login
+like shell access to the container, and only give Homie SSH keys for accounts whose
+permissions you are comfortable exposing that way. See [SECURITY.md](SECURITY.md).
 
 ## Owner auto-login (optional)
 
@@ -283,7 +286,6 @@ Only enable `AUTO_LOGIN_LAN` when nothing but your tunnel and your LAN can reach
 - API integrations cover the *arr stack (Sonarr/Radarr/Prowlarr/Bazarr) and NZBGet —
   anything else falls back to a plain reachability check, not real stats.
 
-## Git workflow
+## Contributing
 
-Single-branch: `main`. This project doesn't use the master/local split — work happens
-directly on `main`.
+Issues and pull requests are welcome; see [CONTRIBUTING.md](CONTRIBUTING.md).

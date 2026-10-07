@@ -327,7 +327,14 @@ documented above for `MachineDiscovery`/`DashboardIcons`.
 `Enum::tryFrom()` for type/provider/discovery-method fields) rather than through
 Laravel's validator: this reads a user-supplied file that could be hand-edited, from
 an older export version, or just malformed, and a single bad row should be skipped
-with a warning rather than aborting the whole restore.
+with a warning rather than aborting the whole restore. The document envelope is the
+exception: a missing/unsupported `version`, or `groups`/`ungrouped_cards`/`machines`
+missing or not a list, throws `InvalidBackup` *before* the replacement transaction
+starts, because a full replace driven by a truncated or foreign file would otherwise
+wipe the existing configuration and recreate nothing. The Backup tab shows that as a
+translated error (`lang/en/backup.php`). A well-formed backup with empty lists is
+still accepted and clears the configuration, since that is what an export of an empty
+dashboard looks like.
 
 Verified live against the real dashboard: exported the actual production-data SQLite
 file, re-imported it through the browser (confirm dialog and all), and diffed the
@@ -593,9 +600,11 @@ session, need the session to pick the DB) since `StartSession` runs before
 
 ## Git
 
-Single-branch: `main`. This project intentionally opts out of the global master/local
-branch model (see `~/.claude/CLAUDE.md`) — there's no separate production deployment to
-mirror, so work happens directly on `main`. Repo: `loki495/homie` on GitHub (public).
+`main` only, no `local` branch: this project opts out of the master/local model since
+there is no separate production deployment to mirror. Changes land through pull
+requests from short-lived branches; `main` is protected by a required CI status check,
+so even a direct push needs that exact commit to have passed CI first. Repo:
+`loki495/homie` on GitHub (public).
 
 ## Testing
 
@@ -608,6 +617,11 @@ including its failure modes (unreachable, non-2xx, malformed history). When audi
 for coverage gaps, check what's actually there first — this suite is not a blank slate.
 
 A few testing patterns worth knowing:
+- **`phpunit.xml` pins `AUTO_LOGIN_EMAIL`/`AUTO_LOGIN_LAN`/`AUTO_LOGIN_OWNER_EMAIL`**
+  to empty/false. Laravel's dotenv never overwrites a variable phpunit already set, so
+  this keeps a developer's own `.env` auto-login settings out of the suite; CI has no
+  `.env`, which is why a leak there passed CI and failed only locally. Pin any new
+  `.env` setting that changes request behavior the same way.
 - **`tests/Feature/HomeTest.php`** calls `$this->withoutVite()` before hitting `/`,
   since `home.blade.php` is the only view that renders `@vite` and no built
   `public/build/manifest.json` exists in a fresh CI checkout — `withoutVite()` swaps

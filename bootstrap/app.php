@@ -25,7 +25,9 @@ return Application::configure(basePath: dirname(__DIR__))
         // standing between a request and an unprotected POST. That bypass is
         // gone (see SESSION_SAME_SITE in .env.example) and Laravel's normal
         // token check now runs on every request, so this only affects the
-        // accuracy of logged/reported client IPs.
+        // accuracy of logged/reported client IPs. With '*', $request->ip() is
+        // client-controllable, so never use it for a trust decision (auto-login
+        // reads REMOTE_ADDR for that).
         $middleware->trustProxies(at: '*');
 
         $middleware->prependToGroup('web', UseStaticAssetsForRemoteHost::class);

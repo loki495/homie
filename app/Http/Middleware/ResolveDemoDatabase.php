@@ -15,8 +15,8 @@ use Symfony\Component\HttpFoundation\Response;
  * Demo mode only (config('homie.demo_mode')): gives each visitor their own
  * private copy of the demo dataset instead of one database shared by every
  * concurrent visitor. Homie has no per-user data model at all, so this is the
- * only isolation mechanism available - see .ai/plans/2026-09-06-demo-sites-and-cd
- * (outside this repo) for the full design.
+ * only isolation mechanism available - see CLAUDE.md's "Demo mode" section
+ * for the full design.
  */
 class ResolveDemoDatabase
 {

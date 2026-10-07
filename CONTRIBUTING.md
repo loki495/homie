@@ -24,8 +24,9 @@ composer pest:browser # real-browser smoke tests
 - Keep PRs focused — one feature or fix per PR is easier to review than a bundle of unrelated changes.
 - Add or update tests for behavior changes (Pest). Sad paths (validation failures, unauthorized access,
   missing services, failed commands, broken connections) matter as much as the happy path.
-- Match the existing code style and architecture: thin Livewire components delegating to Actions,
-  which are the layer both the web UI and CLI commands use. See `CLAUDE.md` for details.
+- Match the existing code style and architecture: thin Livewire components, with logic that isn't
+  UI state in plain classes under `app/Support/` (discovery, config export/import, API
+  fetchers). See `CLAUDE.md` for details.
 - If you're changing how configuration is stored, loaded, or exported, document the format and
   any migration steps needed.
 

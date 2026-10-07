@@ -4,9 +4,8 @@
 # see README.md's "Local development" section.
 #
 # `web` below must be the external Docker network your own Traefik instance
-# watches, and you need to set your own hostname for the app's router rule
-# (only vite's is filled in below as an example — app has none by default
-# since there's no one hostname to assume).
+# watches, and the hostnames in the router rules must be replaced with your own
+# (the app has no default hostname, since there's no one to assume).
 services:
   app:
     labels:

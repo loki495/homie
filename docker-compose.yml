@@ -40,14 +40,9 @@ services:
 
   # Browser (Pest + Playwright) tests only — never started by a plain `docker compose
   # up`. Adds Node.js + Chromium on top of the same `base` image `app` uses, kept out
-  # of `app` itself since that image also serves production over the tunnel (see
-  # CLAUDE.md) and shouldn't carry a JS runtime + browser binary just for dev-time
-  # tests. Run with: docker compose --profile test run --rm app-test ./vendor/bin/pest tests/Browser
-  # History: this service used to be attached to an external `web` Traefik network
-  # (removed repo-wide — see README's "Local development" and "If you run this behind
-  # Traefik" sections) that only existed on a developer's machine; attaching to it
-  # broke this job outright in CI with "network web declared as external, but could
-  # not be found" the first time it ran there.
+  # of `app` itself, so the dev image stays free of a JS runtime + browser binary.
+  # Run with: docker compose --profile test run --rm app-test ./vendor/bin/pest tests/Browser
+  # It must not join an external network: that fails in CI where the network doesn't exist.
   app-test:
     container_name: homie-app-test
     profiles: ["test"]
@@ -67,12 +62,7 @@ services:
     working_dir: /var/www/html
     command: ["npm", "run", "dev", "--", "--host", "0.0.0.0", "--port", "5173"]
     # Published so the host browser (the common case: localhost:${APP_PORT})
-    # can actually reach HMR assets at the default VITE_HMR_HOST (unset ->
-    # localhost) - was missing entirely before, so a plain `docker compose up`
-    # left every dev page with broken CSS/JS regardless of VITE_HMR_HOST/.env
-    # (ERR_CONNECTION_REFUSED, not a routing issue - nothing published this
-    # port to the host at all). See CLAUDE.md's "Container / infra" note this
-    # closes.
+    # can reach HMR assets at the default VITE_HMR_HOST (unset -> localhost).
     ports:
       - "${VITE_PORT:-5173}:5173"
     healthcheck:

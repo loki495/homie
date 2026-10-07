@@ -1,7 +1,10 @@
 <?php
 
+declare(strict_types=1);
+
 use App\Support\Config\ConfigExporter;
 use App\Support\Config\ConfigImporter;
+use App\Support\Config\InvalidBackup;
 use Livewire\Component;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -43,7 +46,13 @@ new class extends Component
             return;
         }
 
-        $result = app(ConfigImporter::class)->import($data);
+        try {
+            $result = app(ConfigImporter::class)->import($data);
+        } catch (InvalidBackup $exception) {
+            $this->importError = $exception->getMessage();
+
+            return;
+        }
 
         $this->importSummary = "Imported {$result->groups} group(s), {$result->cards} card(s), {$result->machines} machine(s).";
         $this->importWarnings = $result->warnings;

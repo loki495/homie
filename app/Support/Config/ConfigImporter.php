@@ -25,8 +25,9 @@ use Illuminate\Support\Facades\DB;
  *
  * Rows are validated defensively rather than via Laravel's validator: this reads
  * a user-supplied file that may be hand-edited, from an older export version, or
- * just malformed, and a single bad row shouldn't abort the whole restore. Anything
- * that doesn't look right is skipped with a warning instead of thrown.
+ * just malformed, and a single bad row shouldn't abort the whole restore. Invalid
+ * rows are skipped with warnings; an invalid backup envelope is rejected before
+ * any existing configuration is deleted.
  */
 class ConfigImporter
 {
@@ -35,6 +36,8 @@ class ConfigImporter
      */
     public function import(array $data): ImportResult
     {
+        $this->validateBackup($data);
+
         $groupsData = is_array($data['groups'] ?? null) ? $data['groups'] : [];
         $ungroupedData = is_array($data['ungrouped_cards'] ?? null) ? $data['ungrouped_cards'] : [];
         $machinesData = is_array($data['machines'] ?? null) ? $data['machines'] : [];
@@ -111,6 +114,22 @@ class ConfigImporter
         });
 
         return new ImportResult($groupCount, $cardCount, $machineCount, $warnings);
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    private function validateBackup(array $data): void
+    {
+        if (($data['version'] ?? null) !== ConfigExporter::VERSION) {
+            throw new InvalidBackup(__('backup.invalid_version'));
+        }
+
+        foreach (['groups', 'ungrouped_cards', 'machines'] as $section) {
+            if (! is_array($data[$section] ?? null) || ! array_is_list($data[$section])) {
+                throw new InvalidBackup(__('backup.invalid_section', ['section' => $section]));
+            }
+        }
     }
 
     /**

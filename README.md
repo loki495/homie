@@ -66,7 +66,10 @@ real dashboard fills in with whatever services you configure.
 - Expandable/collapsible groups ("folders") of cards
 - Backup: export the whole config (groups, cards, scan targets) as one JSON file, and
   restore from it later or on a new box. API keys, passwords, and SSH private keys are
-  never included in the export — re-enter those after a restore. Importing replaces
+  never included in the export — re-enter those after a restore. Only version-1 backups
+  containing the groups, ungrouped cards, and machines lists are accepted; invalid
+  files leave existing configuration untouched. Individual invalid rows are still
+  skipped with warnings. Importing replaces
   everything currently configured, it doesn't merge
 
 ## Major implementation decisions

@@ -24,4 +24,5 @@ rm -rf /var/lib/apt/lists/*
 # lands under /root/.cache/ms-playwright, outside the bind-mounted /var/www/html,
 # so it survives even though the project directory itself gets shadowed by the
 # volume mount at container start.
-npx -y playwright@1.62.1 install --with-deps chromium
+# Must match the playwright version in package.json (Pest refuses a mismatch).
+npx -y playwright@1.63.0 install --with-deps chromium

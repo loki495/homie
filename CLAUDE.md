@@ -565,6 +565,17 @@ same login.
   visitor's goal is to see the dashboard, not go hunting for a password first, and
   these credentials are meant to be public.
 
+- **Output cards in demo mode never run visitor text locally.** `App\Support\
+  DemoOutputCommand` holds the allowlist (`uptime`, `df -h`, `date`, `whoami`,
+  `echo <text>`, the same set `docker/ssh-sandbox/allowed-command.sh` enforces).
+  `⚡card-manager` rejects anything else with a validation error, and
+  `⚡card-output-widget` re-checks every stored command before running it (a
+  config import or an older template can bypass the form) and then runs it only as
+  `ssh … sandbox@output-sandbox '<command>'`. A stored command that fails the check
+  shows "Command not allowed in demo mode." and runs nothing. Seeded demo cards
+  therefore store the bare command, not an `ssh …` line. `sandbox-net` is
+  `internal: true` and the sandbox publishes no port.
+
 `demo:build-template` (never scheduled — homie's demo data isn't date-sensitive, unlike
 insights' equivalent — but run on every container boot by
 `docker/entrypoint-prod.sh` when demo mode is on) migrates fresh, seeds

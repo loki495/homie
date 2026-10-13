@@ -65,7 +65,7 @@ services:
     environment:
       MOCK_PROVIDER: sonarr
     ports:
-      - "${DEMO_MOCK_SONARR_PORT:-8191}:80"
+      - "127.0.0.1:${DEMO_MOCK_SONARR_PORT:-8191}:80"
 
   mock-radarr:
     container_name: homie-mock-radarr
@@ -75,7 +75,7 @@ services:
     environment:
       MOCK_PROVIDER: radarr
     ports:
-      - "${DEMO_MOCK_RADARR_PORT:-8192}:80"
+      - "127.0.0.1:${DEMO_MOCK_RADARR_PORT:-8192}:80"
 
   # Already fully self-contained at build time (see docker/ssh-sandbox/Dockerfile)
   # - no bind mount to remove, unchanged from docker-compose.yml's version.
@@ -92,8 +92,6 @@ services:
       - SETGID
     security_opt:
       - no-new-privileges:true
-    ports:
-      - "${DEMO_OUTPUT_SANDBOX_PORT:-2222}:2222"
     networks:
       - sandbox-net
 
@@ -101,3 +99,4 @@ networks:
   default: {}
   sandbox-net:
     driver: bridge
+    internal: true

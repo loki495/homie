@@ -65,9 +65,9 @@
                     <p class="mt-1 text-sky-800/90 dark:text-sky-200/90">
                         Output-type cards run a real shell command over SSH. The pre-seeded "Try: uptime"
                         card already targets a locked-down sandbox machine built just for this demo — it
-                        can only ever run five fixed commands, nothing else, regardless of what's typed at
-                        it. Open Manage &rarr; Cards, add a card, set its type to "Output", and use the
-                        <strong>Demo sandbox</strong> machine with any of:
+                        can only ever run five fixed commands; anything else is refused by this app and
+                        by the sandbox itself. Open Manage &rarr; Cards, add a card, set its type to "Output", and enter
+                        one of these as the command (it runs on the locked-down <strong>Demo sandbox</strong>):
                     </p>
                     <dl class="mt-3 space-y-2">
                         <div class="rounded-md bg-white/60 p-2 dark:bg-white/5">

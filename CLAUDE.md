@@ -456,8 +456,7 @@ proxies to Traefik's actual container/network CIDR is still tidier, just no long
 
 ## Application auth
 
-Homie ships with a real login now (it used to have none — see the "Current
-limitations" history in README.md before this was added). `app/Http/Middleware/
+Homie ships with a real login now (it used to have none). `app/Http/Middleware/
 RequireAuthentication`, appended to the `web` group in `bootstrap/app.php` after
 `ResolveDemoDatabase` (which is prepended, so it runs first), requires an authenticated `web`-guard session for every route
 except `/login` and `/logout` — unconditionally, including demo mode. Demo mode used
@@ -488,7 +487,7 @@ home lab dashboard.
 **Why hand-rolled instead of Breeze/Fortify.** Both would bring registration,
 profile pages, and (for password reset) a mail dependency this single-admin app has
 no use for and doesn't otherwise assume (see "Design principle: this is a
-distributable app" below — no feature should assume infrastructure a fresh clone
+distributable app" above — no feature should assume infrastructure a fresh clone
 doesn't have). The login itself
 (`resources/views/components/⚡login.blade.php`) is a Livewire 4 SFC matching every
 other component's conventions — `#[Validate]` attributes, Flux `<flux:input>`/
@@ -518,8 +517,10 @@ in `tests/Feature/DemoModeTest.php`, not duplicated here.
 serve a public, credential-gated demo in addition to normal dev/production use
 (`docker-compose.demo.yml` is that deployment). One middleware, a no-op unless demo mode
 is on, prepended to the `web` group in `bootstrap/app.php`, so it runs before
-`RequireAuthentication` (order matters — the DB must be resolved to the visitor's own copy before the login check
-queries the `users` table in it):
+`StartSession` and `RequireAuthentication` (order matters — the DB must be resolved to
+the visitor's own copy before the session handler grabs its connection and before the
+login check queries the `users` table; appended, the session was saved to the wrong
+database and login bounced back to `/login`):
 
 - **`ResolveDemoDatabase`** — homie has no per-user data model at all, so concurrent
   public visitors would otherwise share and stomp on one literal database. Each visitor
@@ -605,10 +606,9 @@ RefreshDatabase-backed test, this is the pattern to reuse — Laravel has no sup
 public API to reassign a connection's PDO back onto its original transaction-tracking
 state, so going straight at the raw PDO is deliberate, not a workaround-of-convenience.
 
-Requires `SESSION_DRIVER=file` (or `cookie`) on any real demo deployment — the default
-`database` driver would create a chicken-and-egg problem (need the DB to find the
-session, need the session to pick the DB) since `StartSession` runs before
-`ResolveDemoDatabase` in the `web` group.
+Any session driver works in demo mode, including the default `database`:
+`ResolveDemoDatabase` is prepended, so it runs before `StartSession` and the session
+handler is built against the visitor's own database.
 
 ## Git
 

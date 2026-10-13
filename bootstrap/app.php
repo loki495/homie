@@ -32,25 +32,12 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->prependToGroup('web', UseStaticAssetsForRemoteHost::class);
 
-        // ResolveDemoDatabase must run before Laravel's own StartSession -
-        // not just before RequireAuthentication's users-table query. Found
-        // live: appending it (running after StartSession) let the session
-        // handler resolve and cache its own DB connection reference against
-        // whatever 'sqlite' pointed at *before* the per-visitor repoint;
-        // DB::purge('sqlite') later in the same request doesn't reach that
-        // already-grabbed reference, so the session got saved against the
-        // wrong database entirely - login "succeeded" in-request (Auth::
-        // attempt() and everything after it used the correctly-repointed
-        // connection) but the persisted session never carried the auth state
-        // to the next request, bouncing straight back to /login. Prepending
-        // puts it ahead of EncryptCookies/StartSession/etc. in the 'web'
-        // group, so the session handler is constructed against the correct
-        // connection from the start - no purge-timing race at all. Caught
-        // live in a real browser, not by the test suite: Livewire::test()
-        // bypasses the HTTP middleware pipeline entirely, so it can't
-        // reproduce an ordering bug between two middlewares - see
-        // tests/Browser/AuthenticationTest.php for the browser-level test
-        // this added to actually catch it.
+        // Must run before StartSession, not just before RequireAuthentication:
+        // the session handler holds the DB connection it resolved at
+        // construction, and DB::purge('sqlite') cannot reach that reference, so
+        // appended, the session is saved to the pre-repoint database and login
+        // bounces back to /login. Livewire::test() skips the middleware
+        // pipeline; tests/Browser/AuthenticationTest.php covers the ordering.
         $middleware->prependToGroup('web', ResolveDemoDatabase::class);
 
         // RequireAuthentication needs Auth::guard()->check(), which needs the

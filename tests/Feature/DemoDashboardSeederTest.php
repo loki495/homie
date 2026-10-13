@@ -5,7 +5,9 @@ declare(strict_types=1);
 use App\Enums\ApiProvider;
 use App\Enums\CardType;
 use App\Models\Card;
+use App\Models\CardOutput;
 use App\Models\Machine;
+use App\Support\DemoOutputCommand;
 use Database\Seeders\DemoDashboardSeeder;
 use Illuminate\Support\Str;
 
@@ -76,4 +78,20 @@ it('seeds a working sandbox machine and output card when a private key is config
 
     expect($card->type)->toBe(CardType::Output)
         ->and($card->output->command)->toBe('uptime');
+});
+
+it('seeds only output commands the demo allowlist accepts', function () {
+    config([
+        'homie.demo_mode' => true,
+        'homie.demo_sandbox_ssh_private_key' => "-----BEGIN OPENSSH PRIVATE KEY-----\nfake\n-----END OPENSSH PRIVATE KEY-----",
+    ]);
+
+    (new DemoDashboardSeeder)->run();
+
+    $commands = CardOutput::pluck('command');
+
+    expect($commands)->not->toBeEmpty();
+    foreach ($commands as $command) {
+        expect(DemoOutputCommand::isAllowed($command))->toBeTrue("refused: {$command}");
+    }
 });

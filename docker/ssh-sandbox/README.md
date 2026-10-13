@@ -79,10 +79,9 @@ connects with `StrictHostKeyChecking=accept-new` (see
 `MachineDiscovery::sshCommand()`), so a rotating host key is harmless and
 this avoids needing a persistent volume for something this low-stakes.
 
-## Adversarially tested locally before writing this section (2026-09-06)
+## Adversarial test results
 
-Built and ran this image directly, then tried to break it - full results
-below, not just trusting the design on paper:
+The image was built and attacked directly rather than trusting the design on paper:
 
 **Two real bugs found in the design, both fixed in the source here:**
 1. `adduser -D` leaves a locked (`!`) shadow password. This build's sshd has

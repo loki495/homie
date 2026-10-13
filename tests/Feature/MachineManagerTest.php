@@ -193,7 +193,7 @@ it('hands off a discovery result to the cards tab instead of creating it directl
 it('creates an ssh scan target with a user and port', function () {
     Livewire::test('machine-manager')
         ->set('name', 'Local')
-        ->set('host', '192.168.1.12')
+        ->set('host', '192.0.2.10')
         ->set('discovery_method', 'ssh')
         ->set('ssh_user', 'deploy')
         ->set('ssh_port', '2222')
@@ -207,7 +207,7 @@ it('creates an ssh scan target with a user and port', function () {
 });
 
 it('discovers containers over ssh, surfacing only published ports', function () {
-    $machine = Machine::factory()->ssh()->create(['host' => '192.168.1.12']);
+    $machine = Machine::factory()->ssh()->create(['host' => '192.0.2.10']);
 
     $lines = implode("\n", [
         json_encode(['Names' => 'sonarr', 'Image' => 'linuxserver/sonarr', 'Ports' => '0.0.0.0:8989->8989/tcp']),
@@ -222,11 +222,11 @@ it('discovers containers over ssh, surfacing only published ports', function () 
 
     expect($component->get('discovered'))->toHaveCount(1)
         ->and($component->get('discovered')[0]['name'])->toBe('sonarr')
-        ->and($component->get('discovered')[0]['url'])->toBe('http://192.168.1.12:8989');
+        ->and($component->get('discovered')[0]['url'])->toBe('http://192.0.2.10:8989');
 });
 
 it('prefers the traefik host label over the raw ip:port when discovering over ssh', function () {
-    $machine = Machine::factory()->ssh()->create(['host' => '192.168.1.12']);
+    $machine = Machine::factory()->ssh()->create(['host' => '192.0.2.10']);
 
     $lines = json_encode([
         'Names' => 'sonarr',
@@ -245,7 +245,7 @@ it('prefers the traefik host label over the raw ip:port when discovering over ss
 });
 
 it('surfaces a traefik-labeled container even with no published port, over ssh', function () {
-    $machine = Machine::factory()->ssh()->create(['host' => '192.168.1.12']);
+    $machine = Machine::factory()->ssh()->create(['host' => '192.0.2.10']);
 
     $lines = implode("\n", [
         json_encode([
@@ -554,7 +554,7 @@ it('shows a friendly error instead of a 500 when the ssh command times out', fun
 it('stores the ssh private key encrypted at rest', function () {
     Livewire::test('machine-manager')
         ->set('name', 'Local')
-        ->set('host', '192.168.1.12')
+        ->set('host', '192.0.2.10')
         ->set('discovery_method', 'ssh')
         ->set('ssh_private_key', 'super-secret-key')
         ->call('save');
@@ -647,7 +647,7 @@ it('takes the demo-mode discovery branch even for an ssh-configured machine, nev
     Process::fake();
     Process::preventStrayProcesses();
 
-    $machine = Machine::factory()->ssh()->create(['host' => '192.168.1.12']);
+    $machine = Machine::factory()->ssh()->create(['host' => '192.0.2.10']);
 
     $component = Livewire::test('machine-manager')->call('discover', $machine->id);
 

@@ -45,7 +45,7 @@ class DemoDashboardSeeder extends Seeder
             'type' => CardType::Output,
             'sort_order' => 0,
         ])->output()->create([
-            'command' => 'df -h /',
+            'command' => 'df -h',
         ]);
 
         Card::create([

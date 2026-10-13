@@ -9,8 +9,12 @@ Homie has no per-user data model, so concurrent demo visitors would share and ov
 one database. `ResolveDemoDatabase` gives each visitor a cookie that maps to a private
 copy of a template SQLite file. Two ordering rules came out of it:
 
-- It must run before `RequireAuthentication`, because the login check queries the
-  `users` table of the visitor's own copy. A real-browser test caught the wrong order.
+- It must run before `StartSession` (and so before `RequireAuthentication`). Appended
+  after `StartSession`, the session handler had already resolved its connection against
+  the pre-repoint `sqlite` database, and `DB::purge('sqlite')` cannot reach that held
+  reference: login succeeded in-request but the session was saved to the wrong database,
+  bouncing the next request to `/login`. `Livewire::test()` skips the HTTP middleware
+  pipeline, so only a browser test (`tests/Browser/AuthenticationTest.php`) catches it.
 - Repointing `database.connections.sqlite.database` is not enough if the connection was
   already resolved in the same process; the middleware also calls `DB::purge('sqlite')`.
   That conflicts with `RefreshDatabase`'s shared in-memory connection, so the tests that

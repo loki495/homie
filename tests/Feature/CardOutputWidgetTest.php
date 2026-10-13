@@ -161,3 +161,47 @@ it('picks up a changed refresh interval without re-running the command', functio
 
     Process::assertRanTimes('df -h', 1);
 });
+
+it('in demo mode runs an allowed command only over ssh on the sandbox', function () {
+    config([
+        'homie.demo_mode' => true,
+        'homie.demo_sandbox_host' => 'output-sandbox',
+        'homie.demo_sandbox_port' => 2222,
+        'homie.demo_sandbox_ssh_user' => 'sandbox',
+    ]);
+    Process::fake(['*' => Process::result(output: 'up 1 day', exitCode: 0)]);
+
+    $card = Card::factory()->create(['type' => CardType::Output]);
+    CardOutput::factory()->create(['card_id' => $card->id, 'command' => 'uptime']);
+
+    Livewire::test('card-output-widget', ['card' => $card])->assertSee('up 1 day');
+
+    Process::assertRan(fn ($process) => str_starts_with($process->command, 'ssh ')
+        && str_ends_with($process->command, "'sandbox@output-sandbox' 'uptime'"));
+});
+
+it('in demo mode refuses a stored command that is not on the allowlist and never runs it', function (string $command) {
+    config(['homie.demo_mode' => true]);
+    Process::fake();
+
+    $card = Card::factory()->create(['type' => CardType::Output]);
+    $cardOutput = CardOutput::factory()->create(['card_id' => $card->id, 'command' => $command]);
+
+    Livewire::test('card-output-widget', ['card' => $card])
+        ->assertSee('Command not allowed in demo mode.');
+
+    Process::assertNothingRan();
+    expect($cardOutput->fresh()->last_run_at)->toBeNull();
+})->with(['cat .env', 'id; cat .env', 'uptime && id']);
+
+it('outside demo mode still runs the command as typed', function () {
+    config(['homie.demo_mode' => false]);
+    Process::fake(['*' => Process::result(output: 'ok', exitCode: 0)]);
+
+    $card = Card::factory()->create(['type' => CardType::Output]);
+    CardOutput::factory()->create(['card_id' => $card->id, 'command' => 'cat /etc/hostname']);
+
+    Livewire::test('card-output-widget', ['card' => $card])->assertSee('ok');
+
+    Process::assertRan('cat /etc/hostname');
+});

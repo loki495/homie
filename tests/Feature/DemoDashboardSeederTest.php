@@ -75,8 +75,5 @@ it('seeds a working sandbox machine and output card when a private key is config
     $card = Card::where('name', 'Try: uptime')->sole();
 
     expect($card->type)->toBe(CardType::Output)
-        ->and($card->output->command)->toContain('sandbox@output-sandbox')
-        ->and($card->output->command)->toContain('-p 2222')
-        ->and($card->output->command)->toContain($keyPath)
-        ->and($card->output->command)->toEndWith('uptime');
+        ->and($card->output->command)->toBe('uptime');
 });

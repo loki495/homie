@@ -4,6 +4,7 @@ use App\Enums\ApiProvider;
 use App\Enums\CardType;
 use App\Models\Card;
 use App\Models\Group;
+use App\Support\DemoOutputCommand;
 use App\Support\DashboardIcons;
 use Illuminate\Contracts\Encryption\DecryptException;
 use Illuminate\Database\Eloquent\Collection;
@@ -97,7 +98,15 @@ new class extends Component
             ...match ($this->type) {
                 'link' => ['url' => 'required|url'],
                 'output' => [
-                    'command' => 'required|string',
+                    'command' => [
+                        'required',
+                        'string',
+                        function (string $attribute, mixed $value, Closure $fail): void {
+                            if (config('homie.demo_mode') && ! DemoOutputCommand::isAllowed((string) $value)) {
+                                $fail('Demo mode only allows: uptime, df -h, date, whoami, echo <text>.');
+                            }
+                        },
+                    ],
                     'refreshAmount' => [
                         'nullable',
                         'integer',

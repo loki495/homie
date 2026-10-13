@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\Card;
+use App\Support\DemoOutputCommand;
 use Illuminate\Process\Exceptions\ProcessTimedOutException;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Process;
@@ -56,7 +57,20 @@ new class extends Component
 
         try {
             try {
-                $result = Process::timeout(10)->run($cardOutput->command);
+                $command = $cardOutput->command;
+
+                if (config('homie.demo_mode')) {
+                    if (! DemoOutputCommand::isAllowed($command)) {
+                        $this->output = 'Command not allowed in demo mode.';
+                        $this->exitCode = -1;
+
+                        return;
+                    }
+
+                    $command = DemoOutputCommand::toSshCommand($command);
+                }
+
+                $result = Process::timeout(10)->run($command);
 
                 $output = trim($result->output()) !== '' ? $result->output() : $result->errorOutput();
 

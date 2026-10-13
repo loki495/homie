@@ -442,3 +442,29 @@ it('renders a group filter dropdown with an ungrouped option and each group tagg
         ->assertSeeHtml('data-group="'.$group->id.'"')
         ->assertSeeHtml('data-group="none"');
 });
+
+it('in demo mode accepts an allowlisted output command', function () {
+    config(['homie.demo_mode' => true]);
+
+    Livewire::test('card-manager')
+        ->set('name', 'Date')
+        ->set('type', 'output')
+        ->set('command', 'date')
+        ->call('save')
+        ->assertHasNoErrors();
+
+    expect(Card::where('name', 'Date')->sole()->output->command)->toBe('date');
+});
+
+it('in demo mode rejects an output command that is not allowlisted with a validation error and saves nothing', function (string $command) {
+    config(['homie.demo_mode' => true]);
+
+    Livewire::test('card-manager')
+        ->set('name', 'Evil')
+        ->set('type', 'output')
+        ->set('command', $command)
+        ->call('save')
+        ->assertHasErrors(['command']);
+
+    expect(Card::where('name', 'Evil')->exists())->toBeFalse();
+})->with(['cat .env', 'id; cat .env', 'df -h && id']);

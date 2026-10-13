@@ -4,8 +4,13 @@ This container exists so a public demo visitor can add a real "output card"
 (homie's arbitrary-shell-command-over-SSH feature) and see it actually work,
 without ever touching a real machine. It is intentionally built to do almost
 nothing. Read this whole file before deploying it anywhere. Threat model: a
-visitor controls the command string, nothing else; the worst outcome of a
-full break is a shell in an empty, isolated container.
+visitor controls the command string, nothing else. In demo mode the app only
+accepts a command from the same allowlist as below
+(`App\Support\DemoOutputCommand`, checked when the card is saved and again
+every time it runs) and runs it only over SSH on this sandbox, as one quoted
+argument; it never reaches the app container's own shell. The worst outcome of
+a full break of this container is a shell in an empty container on an
+internal-only network.
 
 ## What it can do
 
@@ -45,9 +50,9 @@ Four independent layers, each sufficient on its own, stacked anyway:
    with fixed or already-validated arguments.
 4. **Container/Docker-level** (same hardening as every other demo container):
    non-root process where possible, `cap_drop: ALL`, `security_opt:
-   [no-new-privileges:true]`, its own Docker network with **zero** route to
-   anything else on the host (not the other demo containers, not the host, not
-   the internet beyond what sshd itself needs), no volumes, no Docker socket.
+   [no-new-privileges:true]`, its own `internal: true` Docker network (shared only with `app`:
+   no route to the host, the LAN, the internet or the other demo containers),
+   no published port, no volumes, no Docker socket.
    Even a hypothetical full break of layers 1-3 lands in an empty, isolated
    container with nowhere to go.
 
@@ -148,7 +153,8 @@ configuration, not just the unrestricted build from earlier in this file.
   (`sandbox@output-sandbox:2222`) from the Homie app network. Do not publish a
   host or LAN address in deployment documentation.
 - `DemoDashboardSeeder` now seeds a "Demo sandbox" `Machine` row plus a
-  "Try: uptime" output card when `DEMO_SANDBOX_SSH_PRIVATE_KEY` is set (see
+  "Try: uptime" output card (its command is the bare `uptime`; the app wraps it in
+  the ssh call) when `DEMO_SANDBOX_SSH_PRIVATE_KEY` is set (see
   `config/homie.php`'s "Demo output-card SSH sandbox" section) - skipped
   entirely otherwise. Covered by
   `tests/Feature/DemoDashboardSeederTest.php`.

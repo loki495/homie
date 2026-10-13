@@ -3,6 +3,7 @@
 ## Unreleased
 
 ### Fixed
+- Demo mode: the seeded "Disk space" output card ran `df -h /`, which the demo allowlist refuses; it now runs `df -h`.
 - Demo mode: output cards only accept a fixed set of commands (`uptime`, `df -h`, `date`, `whoami`, `echo <text>`) and run them only over SSH on the demo sandbox; previously any command typed into a demo output card ran in the app container. The sandbox network is now internal-only and the sandbox and mock ports are no longer published on all interfaces.
 
 ## 0.2.0 - 2026-10-07

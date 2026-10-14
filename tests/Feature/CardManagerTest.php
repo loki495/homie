@@ -170,6 +170,36 @@ it('creates an api card with its connection details', function () {
         ->and($card->api->api_key)->toBe('secret');
 });
 
+it('rejects any API card base URL but the mock services in demo mode and contacts nothing', function () {
+    config(['homie.demo_mode' => true]);
+    Http::fake();
+
+    Livewire::test('card-manager')
+        ->set('name', 'Probe')
+        ->set('type', 'api')
+        ->set('provider', 'sonarr')
+        ->set('base_url', 'http://192.168.1.1:22')
+        ->call('save')
+        ->assertHasErrors(['base_url']);
+
+    expect(Card::where('name', 'Probe')->exists())->toBeFalse();
+    Http::assertNothingSent();
+});
+
+it('accepts the mock Sonarr URL for an API card in demo mode', function () {
+    config(['homie.demo_mode' => true, 'homie.demo_mock_sonarr_url' => 'http://mock-sonarr']);
+
+    Livewire::test('card-manager')
+        ->set('name', 'Mock Sonarr')
+        ->set('type', 'api')
+        ->set('provider', 'sonarr')
+        ->set('base_url', 'http://mock-sonarr/')
+        ->call('save')
+        ->assertHasNoErrors();
+
+    expect(Card::where('name', 'Mock Sonarr')->exists())->toBeTrue();
+});
+
 it('creates an api card with username and password auth', function () {
     Livewire::test('card-manager')
         ->set('name', 'Router UI')

@@ -577,6 +577,13 @@ same login.
   therefore store the bare command, not an `ssh …` line. `sandbox-net` is
   `internal: true` and the sandbox publishes no port.
 
+- **API cards in demo mode only accept the mock services.** The app fetches an API
+  card's base URL server-side from a container with outbound access, so
+  `App\Support\DemoApiUrl` limits `base_url` to `homie.demo_mock_sonarr_url` /
+  `homie.demo_mock_radarr_url` (trailing slash ignored) and `⚡card-manager` rejects
+  anything else with a field error. Without it a visitor could use the status/timeout
+  message as a port scan of the host's network.
+
 `demo:build-template` (never scheduled — homie's demo data isn't date-sensitive, unlike
 insights' equivalent — but run on every container boot by
 `docker/entrypoint-prod.sh` when demo mode is on) migrates fresh, seeds

@@ -130,5 +130,5 @@ it('rejects a guest Livewire update for a component served on a protected page',
         'components' => [['snapshot' => html_entity_decode($m[1]), 'updates' => [], 'calls' => []]],
     ]);
 
-    expect($response->status())->not->toBe(200);
+    expect($response->status())->toBe(302);
 });

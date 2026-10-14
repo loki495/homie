@@ -8,7 +8,12 @@ visitor controls the command string, nothing else. In demo mode the app only
 accepts a command from the same allowlist as below
 (`App\Support\DemoOutputCommand`, checked when the card is saved and again
 every time it runs) and runs it only over SSH on this sandbox, as one quoted
-argument; it never reaches the app container's own shell. The worst outcome of
+argument; it never reaches the app container's own shell. API cards are the
+other visitor-controlled input: the app fetches an API card's base URL from
+its own container, which has outbound network access, so in demo mode the
+base URL must be one of the two mock Sonarr/Radarr URLs
+(`App\Support\DemoApiUrl`, checked when the card is saved); anything else is
+rejected, so the demo cannot be used to probe the network it runs on. The worst outcome of
 a full break of this container is a shell in an empty container on an
 internal-only network.
 

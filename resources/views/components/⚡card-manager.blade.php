@@ -4,8 +4,9 @@ use App\Enums\ApiProvider;
 use App\Enums\CardType;
 use App\Models\Card;
 use App\Models\Group;
-use App\Support\DemoOutputCommand;
 use App\Support\DashboardIcons;
+use App\Support\DemoApiUrl;
+use App\Support\DemoOutputCommand;
 use Illuminate\Contracts\Encryption\DecryptException;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
@@ -118,7 +119,18 @@ new class extends Component
                         },
                     ],
                 ],
-                'api' => ['base_url' => 'required|url', 'provider' => 'required|string'],
+                'api' => [
+                    'base_url' => [
+                        'required',
+                        'url',
+                        function (string $attribute, mixed $value, Closure $fail): void {
+                            if (config('homie.demo_mode') && ! DemoApiUrl::isAllowed((string) $value)) {
+                                $fail('Demo mode only allows the built-in mock Sonarr and Radarr URLs.');
+                            }
+                        },
+                    ],
+                    'provider' => 'required|string',
+                ],
                 default => [],
             },
         ];

@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Models\Card;
+use App\Models\CardApi;
 use App\Models\Group;
 use App\Models\Machine;
 use App\Support\Config\ConfigExporter;
@@ -122,4 +123,30 @@ it('imports an exported empty backup through the component', function () {
     expect(Group::count())->toBe(0)
         ->and(Card::count())->toBe(0)
         ->and(Machine::count())->toBe(0);
+});
+
+it('imports an API card without its connection when demo mode refuses the base URL', function () {
+    config(['homie.demo_mode' => true]);
+
+    $json = json_encode([
+        'version' => 1,
+        'groups' => [],
+        'machines' => [],
+        'ungrouped_cards' => [[
+            'name' => 'Probe',
+            'type' => 'api',
+            'api' => [
+                'provider' => 'sonarr',
+                'base_url' => 'http://192.168.1.1:22',
+                'auth_type' => 'api_key',
+            ],
+        ]],
+    ]);
+
+    Livewire::test('backup-manager')
+        ->call('import', $json)
+        ->assertSet('importError', null)
+        ->assertSee('demo mode only allows the built-in mock URLs');
+
+    expect(CardApi::count())->toBe(0);
 });

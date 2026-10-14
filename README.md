@@ -312,7 +312,7 @@ Off by default. For a single-owner deployment you can skip the login page for yo
 
 `AUTO_LOGIN_OWNER_EMAIL` trusts the plain `Cf-Access-Authenticated-User-Email` header and does not verify `Cf-Access-Jwt-Assertion`, so every route to the origin, including any other tunnel hostname, must pass through Cloudflare Access; anything that can reach the app without it can forge that header.
 
-Only enable `AUTO_LOGIN_LAN` when nothing but your tunnel and your LAN can reach the app (no public port-forward), since that is what makes "no Cloudflare header" mean "on the LAN". `X-Forwarded-For` is never trusted, because a client can append to it. Apply a change with `docker compose up -d`; a plain image pull keeps the old environment. See `AutoLoginForTrustedRequests`.
+Only enable `AUTO_LOGIN_LAN` when nothing but your tunnel and your LAN can reach the app (no public port-forward), since that is what makes "no Cloudflare header" mean "on the LAN". Never combine it with the same-host reverse-proxy setup in [Production deployment](#production-deployment): the proxy reaches the app from a private address and adds no Cloudflare header, so every internet visitor would be signed in as the owner. `X-Forwarded-For` is never trusted, because a client can append to it. Apply a change with `docker compose up -d`; a plain image pull keeps the old environment. See `AutoLoginForTrustedRequests`.
 
 ## Current limitations
 

@@ -12,6 +12,7 @@ use App\Models\CardApi;
 use App\Models\CardOutput;
 use App\Models\Group;
 use App\Models\Machine;
+use App\Support\DemoApiUrl;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -178,7 +179,9 @@ class ConfigImporter
             $provider = ApiProvider::tryFrom((string) ($apiRow['provider'] ?? ''));
             $authType = in_array($apiRow['auth_type'] ?? null, ['api_key', 'basic'], true) ? $apiRow['auth_type'] : null;
 
-            if ($provider && $authType && is_string($apiRow['base_url'] ?? null) && $apiRow['base_url'] !== '') {
+            if (is_string($apiRow['base_url'] ?? null) && config('homie.demo_mode') && ! DemoApiUrl::isAllowed($apiRow['base_url'])) {
+                $warnings[] = "Card \"{$cardRow['name']}\" was imported without its API connection: demo mode only allows the built-in mock URLs.";
+            } elseif ($provider && $authType && is_string($apiRow['base_url'] ?? null) && $apiRow['base_url'] !== '') {
                 CardApi::create([
                     'card_id' => $card->id,
                     'provider' => $provider,

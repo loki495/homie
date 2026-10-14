@@ -3,7 +3,7 @@
 ## Unreleased
 
 ### Fixed
-- Demo mode: API cards only accept the built-in mock Sonarr/Radarr URLs; previously any URL was fetched from the app container, which let a visitor probe the network the demo runs on.
+- Demo mode: API cards only accept the built-in mock Sonarr/Radarr URLs; previously any URL was fetched from the app container, which let a visitor probe the network the demo runs on. A backup import in demo mode drops API connections to any other URL.
 - Demo mode: the seeded "Disk space" output card ran `df -h /`, which the demo allowlist refuses; it now runs `df -h`.
 - Demo mode: output cards only accept a fixed set of commands (`uptime`, `df -h`, `date`, `whoami`, `echo <text>`) and run them only over SSH on the demo sandbox; previously any command typed into a demo output card ran in the app container. The sandbox network is now internal-only and the sandbox and mock ports are no longer published on all interfaces.
 

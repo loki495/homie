@@ -581,7 +581,7 @@ same login.
   card's base URL server-side from a container with outbound access, so
   `App\Support\DemoApiUrl` limits `base_url` to `homie.demo_mock_sonarr_url` /
   `homie.demo_mock_radarr_url` (trailing slash ignored) and `⚡card-manager` rejects
-  anything else with a field error. Without it a visitor could use the status/timeout
+  anything else with a field error; `ConfigImporter` applies the same check to a backup import (the card is imported without its API connection, with a warning). Without it a visitor could use the status/timeout
   message as a port scan of the host's network.
 
 `demo:build-template` (never scheduled — homie's demo data isn't date-sensitive, unlike

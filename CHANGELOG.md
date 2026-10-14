@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.2.1 - 2026-10-14
+
 ### Fixed
 - Demo mode: API cards only accept the built-in mock Sonarr/Radarr URLs; previously any URL was fetched from the app container, which let a visitor probe the network the demo runs on. A backup import in demo mode drops API connections to any other URL.
 - Demo mode: the seeded "Disk space" output card ran `df -h /`, which the demo allowlist refuses; it now runs `df -h`.

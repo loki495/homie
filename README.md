@@ -192,6 +192,10 @@ docker compose run --rm vite npm install           # first time only
 docker compose run --rm vite npm run build
 ```
 
+The `homie-vite` dev server starts with `docker compose up` before `npm install` has run, so
+it restarts in a loop (and shows unhealthy in `docker ps`) until the install step finishes.
+That is expected; it settles on its own afterwards.
+
 The dev container assumes your host user is UID 1000 (it creates `www-data` with that
 UID so bind-mounted files stay yours); on another UID, adjust `docker/setup-dev-container.sh`.
 
@@ -212,7 +216,9 @@ file paths, query bindings — to anyone who can reach the app at all, logged in
 
 ### Testing and code quality
 
-Run from the host — these wrap `docker exec` into the `homie-app` container:
+Run from the host — these wrap `docker exec` into the `homie-app` container, so they need
+PHP and Composer installed on the host. With Docker only, run the same tools inside the
+container, e.g. `docker exec -u www-data homie-app composer pest`.
 
 ```bash
 composer pest         # run the test suite (Pest)

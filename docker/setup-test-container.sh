@@ -25,4 +25,4 @@ rm -rf /var/lib/apt/lists/*
 # so it survives even though the project directory itself gets shadowed by the
 # volume mount at container start.
 # Must match the playwright version in package.json (Pest refuses a mismatch).
-npx -y playwright@1.63.0 install --with-deps chromium
+npx -y playwright@1.64.1 install --with-deps chromium

@@ -119,7 +119,10 @@ Longer write-ups of the harder problems are in [docs/engineering-notes.md](docs/
   (`SESSION_SAME_SITE=none` + `SESSION_SECURE_COOKIE=true`) so the session cookie itself
   survives the cross-origin embed — removing the need for any exemption. Laravel's normal
   CSRF check now runs on every request, strictly more protection than the workaround it
-  replaced, not less.
+  replaced, not less. Embedding is opt-in on the framing side too: every response sends
+  `Content-Security-Policy: frame-ancestors 'self'` unless `HOMIE_FRAME_ANCESTORS` lists the
+  embedding origin(s), so a stranger's page cannot frame the dashboard (clickjacking) even
+  once the cookie settings allow cross-site sessions.
 
 ## Production deployment
 
@@ -137,7 +140,7 @@ docker compose --env-file .env.production -f docker-compose.production.yml exec 
 
 Configure an HTTPS reverse proxy on the same host to forward the chosen public
 hostname to `http://127.0.0.1:8090`. Do not change the loopback bind to `0.0.0.0`
-or publish the port directly to the internet. Every app route still requires the
+or publish the port directly to the internet. Every page still requires the
 admin login created above; Homie has no registration route and ships no default
 private-installation credentials. Keep the persistent Docker volumes in backups:
 they contain the SQLite database, session data, and encrypted SSH/API credentials.

@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Http\Middleware\AutoLoginForTrustedRequests;
+use App\Http\Middleware\FrameAncestors;
 use App\Http\Middleware\RequireAuthentication;
 use App\Http\Middleware\ResolveDemoDatabase;
 use App\Http\Middleware\UseStaticAssetsForRemoteHost;
@@ -31,6 +32,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->trustProxies(at: '*');
 
         $middleware->prependToGroup('web', UseStaticAssetsForRemoteHost::class);
+        $middleware->prependToGroup('web', FrameAncestors::class);
 
         // Must run before StartSession, not just before RequireAuthentication:
         // the session handler holds the DB connection it resolved at

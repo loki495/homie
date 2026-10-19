@@ -1,5 +1,7 @@
 # Homie — project context
 
+Delivery: PR. The default branch has required status checks, so changes land through a throwaway-branch PR (git-workflow skill, GH006); the remote branch name doesn't matter. Commit on the default branch locally; push only after explicit confirmation.
+
 Self-hosted home lab dashboard. Laravel 13 + Livewire 4 (SFC) + Alpine.js + Tailwind v4 +
 Flux UI (free tier). SQLite. Dockerized dev environment; reachable via a published
 port (`APP_PORT`, default 8090) out of the box. Any reverse-proxy or tunnel routing is

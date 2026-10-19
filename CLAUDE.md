@@ -448,6 +448,13 @@ cookie removes the need for any exemption, so the middleware and its test are go
 Laravel's normal token check now runs on every request — strictly more protection than
 before, not less.
 
+Framing is opt-in the same way: `App\Http\Middleware\FrameAncestors` (prepended to `web`)
+sends `Content-Security-Policy: frame-ancestors` built from `HOMIE_FRAME_ANCESTORS`
+(`config('homie.frame_ancestors')`), defaulting to `'self'`. Embedders list their dashboard
+origin there alongside the `SESSION_SAME_SITE=none` setting. Each token must be a quoted
+`'self'`/`'none'` or a scheme/origin; an empty or malformed value (a `;` or `,` would inject
+other directives) falls back to `'self'` rather than being sent.
+
 `trustProxies(at: '*')` remains and makes `$request->ip()` client-controllable, so it must
 never feed a trust decision; it only affects the client IP in logs. The auto-login LAN check
 (`AutoLoginForTrustedRequests`) reads the socket peer (`REMOTE_ADDR`) for that reason, and

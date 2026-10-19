@@ -85,4 +85,17 @@ return [
     'demo_sandbox_ssh_private_key' => env('DEMO_SANDBOX_SSH_PRIVATE_KEY')
         ? base64_decode((string) env('DEMO_SANDBOX_SSH_PRIVATE_KEY'))
         : null,
+
+    /*
+    |--------------------------------------------------------------------------
+    | Framing policy
+    |--------------------------------------------------------------------------
+    |
+    | Space-separated origins allowed to embed the app in an <iframe>, sent as
+    | the CSP frame-ancestors directive (see FrameAncestors). Defaults to the
+    | app's own origin only; add the embedding dashboard's origin alongside
+    | SESSION_SAME_SITE=none (see .env.example).
+    |
+    */
+    'frame_ancestors' => env('HOMIE_FRAME_ANCESTORS', "'self'"),
 ];

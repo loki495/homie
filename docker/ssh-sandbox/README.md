@@ -33,11 +33,12 @@ actually sends:
 Anything else — including any attempt at a real shell, `;`/`&&` chaining,
 path traversal, or a completely different command — gets a fixed rejection
 message and a non-zero exit. There is no fallback, no "advanced mode," no
-way to reach a real shell from this container over SSH, period.
+way to reach a real shell from this container over SSH.
 
 ## Why it's safe to say that, not just claim it
 
-Four independent layers, each sufficient on its own, stacked anyway:
+Four layers, stacked: layers 1-3 each independently refuse a shell, and
+layer 4 limits the damage if they all fail.
 
 1. **`sshd_config`**: password auth off, root login off, no TCP/agent/X11
    forwarding, no tunneling, no PTY, `AllowUsers sandbox` only, `Subsystem

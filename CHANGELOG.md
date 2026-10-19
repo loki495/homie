@@ -2,10 +2,13 @@
 
 ## Unreleased
 
+## 0.2.2 - 2026-10-19
+
 ### Added
 - Every response sends `Content-Security-Policy: frame-ancestors 'self'`, so other sites cannot frame the dashboard. To embed it, list the embedding origin in `HOMIE_FRAME_ANCESTORS` alongside the `SESSION_SAME_SITE=none` setting; an empty or malformed value falls back to `'self'`.
 
 ### Changed
+- Dependency updates (Livewire, Vite, PHPStan, Playwright and GitHub Actions) and a pinned Playwright version in the test container setup.
 - Docs: the demo sandbox README states what each defence layer does on its own, and the authentication docs list the routes the login does not cover.
 
 ## 0.2.1 - 2026-10-14

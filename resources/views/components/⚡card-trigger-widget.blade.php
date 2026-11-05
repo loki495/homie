@@ -54,14 +54,14 @@ new class extends Component
 };
 ?>
 
-<div class="mt-3">
+<div class="mt-3 min-w-0">
     <button
         type="button"
         wire:click="run"
         wire:confirm="Run “{{ $card->name }}”?"
         wire:loading.attr="disabled"
         wire:target="run"
-        class="w-full rounded-md bg-slate-800 px-3 py-2 text-sm font-medium text-white transition hover:bg-slate-700 disabled:opacity-50 dark:bg-slate-200 dark:text-slate-900 dark:hover:bg-slate-300"
+        class="rounded-md border border-slate-300 bg-white px-4 py-1.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:opacity-50 dark:border-slate-500 dark:bg-slate-700 dark:text-slate-100 dark:hover:bg-slate-600"
     >
         <span wire:loading.remove wire:target="run">Run</span>
         <span wire:loading wire:target="run">Running…</span>
@@ -73,7 +73,7 @@ new class extends Component
                 'bg-emerald-500' => $exitCode === 0,
                 'bg-rose-500' => $exitCode !== 0,
             ])></span>
-            <pre class="max-h-24 min-w-0 flex-1 overflow-auto whitespace-pre-wrap font-mono text-xs text-slate-500 dark:text-slate-400">{{ $output !== '' ? $output : 'Done.' }}</pre>
+            <pre class="max-h-24 min-w-0 flex-1 overflow-auto whitespace-pre-wrap break-all font-mono text-xs text-slate-500 dark:text-slate-400">{{ $output !== '' ? $output : 'Done.' }}</pre>
         </div>
     @endif
 </div>

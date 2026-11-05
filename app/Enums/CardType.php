@@ -9,4 +9,5 @@ enum CardType: string
     case Link = 'link';
     case Output = 'output';
     case Api = 'api';
+    case Trigger = 'trigger';
 }

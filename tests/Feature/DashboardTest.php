@@ -219,7 +219,10 @@ it('shows a filter chip for every group plus All when there are several categori
         ->assertSeeHtml("cat = 'g{$media->id}'")
         ->assertSeeHtml("cat = 'g{$system->id}'")
         ->assertSeeHtml("cat = 'none'")
-        ->assertSeeHtml("x-show=\"cat === 'all' || cat === 'g{$media->id}'\"");
+        ->assertSeeHtml("x-show=\"cat === 'all' || cat === 'g{$media->id}'\"")
+        // The section box, its header and the grid's border/padding only exist while "All" is selected.
+        ->assertSeeHtml("x-bind:class=\"cat === 'all' ? 'rounded-lg border")
+        ->assertSeeHtml("x-bind:class=\"cat === 'all' ? 'border-t border-slate-100 p-4");
 });
 
 it('hides the filter bar when there is only one category', function () {

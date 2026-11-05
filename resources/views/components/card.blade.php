@@ -22,12 +22,12 @@
 
     @if ($card->type === \App\Enums\CardType::Link)
         @if ($editing)
-            <div class="block rounded-lg border border-slate-200 bg-white p-4 opacity-75 dark:border-slate-700 dark:bg-slate-800">
+            <div class="block rounded-lg border border-slate-200 bg-white p-5 sm:p-4 opacity-75 dark:border-slate-700 dark:bg-slate-800">
                 <div class="flex items-center gap-2.5">
                     @if ($card->icon)
-                        <x-card-icon :src="$card->icon" class="h-6 w-6 shrink-0 object-contain" />
+                        <x-card-icon :src="$card->icon" class="h-8 w-8 shrink-0 sm:h-6 sm:w-6 object-contain" />
                     @endif
-                    <h3 class="truncate text-sm font-semibold text-slate-700 dark:text-slate-200">{{ $card->name }}</h3>
+                    <h3 class="truncate text-base font-semibold sm:text-sm text-slate-700 dark:text-slate-200">{{ $card->name }}</h3>
                 </div>
                 <p class="mt-1 truncate text-xs text-slate-400 dark:text-slate-500">{{ $card->url }}</p>
             </div>
@@ -36,34 +36,34 @@
                 href="{{ $card->url }}"
                 target="_blank"
                 rel="noopener"
-                class="block rounded-lg border border-slate-200 bg-white p-4 shadow-sm transition hover:shadow-md dark:border-slate-700 dark:bg-slate-800 dark:hover:shadow-slate-900/50"
+                class="block rounded-lg border border-slate-200 bg-white p-5 sm:p-4 shadow-sm transition hover:shadow-md dark:border-slate-700 dark:bg-slate-800 dark:hover:shadow-slate-900/50"
             >
                 <div class="flex items-center gap-2.5">
                     @if ($card->icon)
-                        <x-card-icon :src="$card->icon" class="h-6 w-6 shrink-0 object-contain" />
+                        <x-card-icon :src="$card->icon" class="h-8 w-8 shrink-0 sm:h-6 sm:w-6 object-contain" />
                     @endif
-                    <h3 class="truncate text-sm font-semibold text-slate-700 dark:text-slate-200">{{ $card->name }}</h3>
+                    <h3 class="truncate text-base font-semibold sm:text-sm text-slate-700 dark:text-slate-200">{{ $card->name }}</h3>
                 </div>
                 <p class="mt-1 truncate text-xs text-slate-400 dark:text-slate-500">{{ $card->url }}</p>
             </a>
         @endif
     @elseif ($card->type === \App\Enums\CardType::Output)
-        <div @class(['rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-800', 'opacity-75' => $editing])>
+        <div @class(['rounded-lg border border-slate-200 bg-white p-5 sm:p-4 dark:border-slate-700 dark:bg-slate-800', 'opacity-75' => $editing])>
             <div class="flex items-center gap-2.5">
                 @if ($card->icon)
-                    <x-card-icon :src="$card->icon" class="h-5 w-5 shrink-0 object-contain" />
+                    <x-card-icon :src="$card->icon" class="h-7 w-7 shrink-0 sm:h-5 sm:w-5 object-contain" />
                 @endif
-                <h3 class="truncate text-sm font-semibold text-slate-700 dark:text-slate-200">{{ $card->name }}</h3>
+                <h3 class="truncate text-base font-semibold sm:text-sm text-slate-700 dark:text-slate-200">{{ $card->name }}</h3>
             </div>
             <livewire:card-output-widget :card="$card" :key="'card-output-'.$card->id" lazy />
         </div>
     @elseif ($card->type === \App\Enums\CardType::Trigger)
-        <div @class(['rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-800', 'opacity-75' => $editing])>
+        <div @class(['rounded-lg border border-slate-200 bg-white p-5 sm:p-4 dark:border-slate-700 dark:bg-slate-800', 'opacity-75' => $editing])>
             <div class="flex items-center gap-2.5">
                 @if ($card->icon)
-                    <x-card-icon :src="$card->icon" class="h-5 w-5 shrink-0 object-contain" />
+                    <x-card-icon :src="$card->icon" class="h-7 w-7 shrink-0 sm:h-5 sm:w-5 object-contain" />
                 @endif
-                <h3 class="truncate text-sm font-semibold text-slate-700 dark:text-slate-200">{{ $card->name }}</h3>
+                <h3 class="truncate text-base font-semibold sm:text-sm text-slate-700 dark:text-slate-200">{{ $card->name }}</h3>
             </div>
             @if ($editing)
                 <p class="mt-2 truncate font-mono text-xs text-slate-400 dark:text-slate-500">{{ $card->output?->command }}</p>
@@ -73,15 +73,15 @@
         </div>
     @elseif ($card->type === \App\Enums\CardType::Api)
         @php
-            $apiCardClasses = 'block rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-800'.($editing ? ' opacity-75' : '');
+            $apiCardClasses = 'block rounded-lg border border-slate-200 bg-white p-5 sm:p-4 dark:border-slate-700 dark:bg-slate-800'.($editing ? ' opacity-75' : '');
         @endphp
         @if ($editing)
             <div class="{{ $apiCardClasses }}">
                 <div class="flex items-center gap-2.5">
                     @if ($card->icon)
-                        <x-card-icon :src="$card->icon" class="h-5 w-5 shrink-0 object-contain" />
+                        <x-card-icon :src="$card->icon" class="h-7 w-7 shrink-0 sm:h-5 sm:w-5 object-contain" />
                     @endif
-                    <h3 class="truncate text-sm font-semibold text-slate-700 dark:text-slate-200">{{ $card->name }}</h3>
+                    <h3 class="truncate text-base font-semibold sm:text-sm text-slate-700 dark:text-slate-200">{{ $card->name }}</h3>
                 </div>
                 <livewire:card-api-widget :card="$card" :key="'card-api-'.$card->id" lazy />
             </div>
@@ -89,9 +89,9 @@
             <a href="{{ $card->url }}" target="_blank" rel="noopener" class="{{ $apiCardClasses }}">
                 <div class="flex items-center gap-2.5">
                     @if ($card->icon)
-                        <x-card-icon :src="$card->icon" class="h-5 w-5 shrink-0 object-contain" />
+                        <x-card-icon :src="$card->icon" class="h-7 w-7 shrink-0 sm:h-5 sm:w-5 object-contain" />
                     @endif
-                    <h3 class="truncate text-sm font-semibold text-slate-700 dark:text-slate-200">{{ $card->name }}</h3>
+                    <h3 class="truncate text-base font-semibold sm:text-sm text-slate-700 dark:text-slate-200">{{ $card->name }}</h3>
                 </div>
                 <livewire:card-api-widget :card="$card" :key="'card-api-'.$card->id" lazy />
             </a>

@@ -161,7 +161,7 @@ new class extends Component
         $ungroupedCards = $this->ungroupedCards();
     @endphp
 
-    <main class="mx-auto max-w-5xl space-y-6 p-4 sm:p-6">
+    <main x-data="{ cat: 'all' }" class="mx-auto max-w-5xl space-y-6 p-4 sm:p-6">
         <x-demo-info-panel />
 
         @if ($groups->isEmpty() && $ungroupedCards->isEmpty())
@@ -179,6 +179,18 @@ new class extends Component
                     Open Manage
                 </button>
             </div>
+        @endif
+
+        @if ($groups->count() + ($ungroupedCards->isNotEmpty() ? 1 : 0) > 1)
+            <nav aria-label="Filter by category" class="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:flex-wrap sm:px-0">
+                <button type="button" x-on:click="cat = 'all'" x-bind:aria-pressed="cat === 'all'" x-bind:class="cat === 'all' ? 'bg-slate-800 text-white dark:bg-slate-100 dark:text-slate-800' : 'bg-white text-slate-600 dark:bg-slate-800 dark:text-slate-200'" class="shrink-0 rounded-full px-4 py-2 text-sm font-semibold shadow-sm">All</button>
+                @foreach ($groups as $group)
+                    <button type="button" x-on:click="cat = 'g{{ $group->id }}'" x-bind:aria-pressed="cat === 'g{{ $group->id }}'" x-bind:class="cat === 'g{{ $group->id }}' ? 'bg-slate-800 text-white dark:bg-slate-100 dark:text-slate-800' : 'bg-white text-slate-600 dark:bg-slate-800 dark:text-slate-200'" class="shrink-0 rounded-full px-4 py-2 text-sm font-semibold shadow-sm">{{ $group->name }}</button>
+                @endforeach
+                @if ($ungroupedCards->isNotEmpty())
+                    <button type="button" x-on:click="cat = 'none'" x-bind:aria-pressed="cat === 'none'" x-bind:class="cat === 'none' ? 'bg-slate-800 text-white dark:bg-slate-100 dark:text-slate-800' : 'bg-white text-slate-600 dark:bg-slate-800 dark:text-slate-200'" class="shrink-0 rounded-full px-4 py-2 text-sm font-semibold shadow-sm">Other</button>
+                @endif
+            </nav>
         @endif
 
         <div
@@ -213,6 +225,7 @@ new class extends Component
                         x-on:dragover.prevent
                         x-on:drop.prevent="onGroupDrop({{ $groupIndex }})"
                     @endif
+                    x-show="cat === 'all' || cat === 'g{{ $group->id }}'"
                     class="rounded-lg border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-800"
                 >
                     <div
@@ -263,9 +276,9 @@ new class extends Component
                         @endif
                     </div>
                     <div
-                        x-show="open"
+                        x-show="open || cat !== 'all'"
                         x-transition
-                        class="grid grid-cols-1 gap-3 border-t border-slate-100 p-4 sm:grid-cols-2 lg:grid-cols-3 dark:border-slate-700"
+                        class="grid grid-cols-[repeat(auto-fill,minmax(9.5rem,1fr))] gap-3 border-t border-slate-100 p-4 sm:grid-cols-2 lg:grid-cols-3 dark:border-slate-700"
                     >
                         @foreach ($group->cards as $cardIndex => $card)
                             <div
@@ -298,7 +311,8 @@ new class extends Component
                         $wire.reorderCards(this.cardOrder);
                     },
                 }"
-                class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3"
+                x-show="cat === 'all' || cat === 'none'"
+                class="grid grid-cols-[repeat(auto-fill,minmax(9.5rem,1fr))] gap-3 sm:grid-cols-2 lg:grid-cols-3"
             >
                 @foreach ($ungroupedCards as $cardIndex => $card)
                     <div

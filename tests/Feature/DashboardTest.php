@@ -205,3 +205,26 @@ it('renders groups and cards as draggable only while arranging', function () {
 
     expect($component->html())->toContain('draggable="true"');
 });
+
+it('shows a filter chip for every group plus All when there are several categories', function () {
+    $media = Group::factory()->create(['name' => 'Media']);
+    $system = Group::factory()->create(['name' => 'System']);
+    Card::factory()->create(['group_id' => $media->id]);
+    Card::factory()->create(['group_id' => $system->id]);
+    Card::factory()->create(['group_id' => null]);
+
+    Livewire::test('dashboard')
+        ->assertSeeHtml('aria-label="Filter by category"')
+        ->assertSeeHtml("cat = 'all'")
+        ->assertSeeHtml("cat = 'g{$media->id}'")
+        ->assertSeeHtml("cat = 'g{$system->id}'")
+        ->assertSeeHtml("cat = 'none'")
+        ->assertSeeHtml("x-show=\"cat === 'all' || cat === 'g{$media->id}'\"");
+});
+
+it('hides the filter bar when there is only one category', function () {
+    $group = Group::factory()->create();
+    Card::factory()->create(['group_id' => $group->id]);
+
+    Livewire::test('dashboard')->assertDontSeeHtml('aria-label="Filter by category"');
+});

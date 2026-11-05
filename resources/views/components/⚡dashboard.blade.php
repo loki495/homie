@@ -168,7 +168,7 @@ new class extends Component
             <div class="rounded-lg border border-dashed border-slate-300 bg-white p-10 text-center dark:border-slate-600 dark:bg-slate-800">
                 <p class="text-sm font-semibold text-slate-700 dark:text-slate-200">No cards yet</p>
                 <p class="mx-auto mt-1 max-w-sm text-sm text-slate-400 dark:text-slate-500">
-                    Add a link, an output card, or run a discovery scan from Manage to get started.
+                    Add a link, an output card, a trigger button, or run a discovery scan from Manage to get started.
                 </p>
                 <button
                     type="button"

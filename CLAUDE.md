@@ -131,6 +131,17 @@ empty/null on any failure (timeout, non-2xx, unexpected shape) — deliberately 
 sharing the fetcher's outer try/catch, so a hiccup on the history/listgroups call alone
 never flips the whole card into its error state when the main stats call succeeded fine.
 
+## Trigger cards run a command only on click
+
+`CardType::Trigger` reuses the `card_outputs` row (its `command`, `last_output`, `last_exit_code`) so
+there is no extra table and config export/import work unchanged; `refresh_interval_seconds` is always
+null for a trigger. `⚡card-trigger-widget.blade.php` renders a Run button with `wire:confirm` and runs
+the command with a 30s `Process` timeout, catching every `Throwable` like the output widget. It never
+runs on mount or poll. Triggers are disabled in demo mode (both the form validation and the widget).
+The container has no `adb`; a command that needs it must SSH to a host that does (the same
+`ssh -i storage/ssh/<slug> ...` pattern as output cards), and a Home Assistant webhook is just
+`curl -fsS -X POST <url>`.
+
 ## Discovery: host-network containers need an inspect fallback
 
 `docker ps`/`/containers/json` report an empty `Ports` for containers running with

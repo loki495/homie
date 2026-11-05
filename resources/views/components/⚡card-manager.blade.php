@@ -94,10 +94,21 @@ new class extends Component
     {
         return [
             'name' => 'required|string|max:255',
-            'type' => 'required|in:link,output,api',
+            'type' => 'required|in:link,output,api,trigger',
             'group_id' => 'nullable|exists:groups,id',
             ...match ($this->type) {
                 'link' => ['url' => 'required|url'],
+                'trigger' => [
+                    'command' => [
+                        'required',
+                        'string',
+                        function (string $attribute, mixed $value, Closure $fail): void {
+                            if (config('homie.demo_mode')) {
+                                $fail('Trigger cards are disabled in demo mode.');
+                            }
+                        },
+                    ],
+                ],
                 'output' => [
                     'command' => [
                         'required',
@@ -160,10 +171,10 @@ new class extends Component
 
         $card->save();
 
-        if ($this->type === 'output') {
+        if (in_array($this->type, ['output', 'trigger'], true)) {
             $card->output()->updateOrCreate([], [
                 'command' => $this->command,
-                'refresh_interval_seconds' => $this->refreshAmount
+                'refresh_interval_seconds' => $this->type === 'output' && $this->refreshAmount
                     ? $this->refreshAmount * ($this->refreshUnit === 'minutes' ? 60 : 1)
                     : null,
             ]);
@@ -384,6 +395,11 @@ new class extends Component
             </div>
             <p class="text-xs text-slate-400 dark:text-slate-500">
                 Auto-refresh interval (leave blank to only run on page load, {{ $refreshUnit === 'seconds' ? '5s' : '1m' }} minimum)
+            </p>
+        @elseif ($type === 'trigger')
+            <flux:textarea wire:model="command" rows="2" placeholder="curl -fsS -X POST http://homeassistant.lan:8123/api/webhook/my-id" class="font-mono" />
+            <p class="text-xs text-slate-400 dark:text-slate-500">
+                Runs once when the card's button is clicked (after a confirmation), never on page load.
             </p>
         @elseif ($type === 'api')
             <flux:select wire:model="provider">

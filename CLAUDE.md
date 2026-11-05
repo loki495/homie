@@ -147,7 +147,7 @@ The container has no `adb`; a command that needs it must SSH to a host that does
 The dashboard's `<main>` holds one Alpine `cat` value (`all`, `g<group id>` or `none` for ungrouped
 cards). The chip bar sets it and each group section and the ungrouped grid `x-show` against it, so
 filtering never touches the server. A group's collapsed state is ignored while a specific category is
-selected, otherwise picking a collapsed group would show only its header. The bar is hidden with a
+selected, otherwise picking a collapsed group would show only its header. With a specific category selected the section's box, header and grid border/padding are dropped (bound classes keyed on `cat`) so its cards float free. The bar is hidden with a
 single category. Card grids use `repeat(auto-fill, minmax(9.5rem, 1fr))` below `sm` so cards wrap two
 across on a phone, and `card.blade.php` bumps padding, icon and title size on phones only.
 

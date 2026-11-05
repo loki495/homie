@@ -226,9 +226,10 @@ new class extends Component
                         x-on:drop.prevent="onGroupDrop({{ $groupIndex }})"
                     @endif
                     x-show="cat === 'all' || cat === 'g{{ $group->id }}'"
-                    class="rounded-lg border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-800"
+                    x-bind:class="cat === 'all' ? 'rounded-lg border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-800' : ''"
                 >
                     <div
+                        x-show="cat === 'all'"
                         class="flex items-center justify-between px-4 py-3"
                         @if ($editing)
                             draggable="true"
@@ -278,7 +279,8 @@ new class extends Component
                     <div
                         x-show="open || cat !== 'all'"
                         x-transition
-                        class="grid grid-cols-[repeat(auto-fill,minmax(9.5rem,1fr))] gap-3 border-t border-slate-100 p-4 sm:grid-cols-2 lg:grid-cols-3 dark:border-slate-700"
+                        x-bind:class="cat === 'all' ? 'border-t border-slate-100 p-4 dark:border-slate-700' : ''"
+                        class="grid grid-cols-[repeat(auto-fill,minmax(9.5rem,1fr))] gap-3 sm:grid-cols-2 lg:grid-cols-3"
                     >
                         @foreach ($group->cards as $cardIndex => $card)
                             <div

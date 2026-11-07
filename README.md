@@ -55,6 +55,8 @@ real dashboard fills in with whatever services you configure.
   **Discovery** tab first — saving one auto-syncs it to `storage/ssh/{machine-name}` for the command to
   use (e.g. `-i /var/www/html/storage/ssh/media`); commands referencing a machine with
   no saved key will fail with a permission-denied error
+- "Trigger" cards: the same kind of shell command, but run only when you click a
+  confirmed **Run** button, never on load or on a timer. Disabled in demo mode
 - API-connected cards for services with an API — Sonarr and Radarr show series/movies,
   missing, and queue counts, plus a "Recently downloaded"/"Recently deleted" list; Prowlarr
   shows enabled indexers, grabs, and failures; Bazarr shows missing subtitle counts; NZBGet
@@ -66,6 +68,8 @@ real dashboard fills in with whatever services you configure.
   batched into a single save on drop). Up/down arrow buttons remain alongside it as a
   fallback, since native HTML5 drag doesn't work on touch devices
 - Expandable/collapsible groups ("folders") of cards
+- Category filter chips above the dashboard (shown when there is more than one
+  category); filtering happens in the browser
 - Backup: export the whole config (groups, cards, scan targets) as one JSON file, and
   restore from it later or on a new box. API keys, passwords, and SSH private keys are
   never included in the export — re-enter those after a restore. Only version-1 backups
@@ -281,8 +285,8 @@ remote access.
 
 ## Shell command execution
 
-Output cards run the command text you configure, exactly as written, through `sh`
-inside the app container:
+Output and trigger cards run the command text you configure, exactly as written, through `sh`
+inside the app container. Trigger cards run only on a click of their **Run** button:
 
 - **When:** when the dashboard renders the card, then every N seconds while the page
   stays open if the card has a refresh interval. Nothing runs while no one has the

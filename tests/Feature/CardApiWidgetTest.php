@@ -61,6 +61,26 @@ it('shows a friendly error instead of a 500 when the api is unreachable', functi
         ->assertSeeHtml('bg-rose-500');
 });
 
+it('links to the service only when the card is not being arranged', function () {
+    Http::fake([
+        'example.test/*' => Http::response(['status' => 'up'], 200),
+    ]);
+
+    $card = Card::factory()->create(['type' => CardType::Api, 'name' => 'Sonarr', 'url' => 'http://sonarr.lan']);
+    CardApi::factory()->create([
+        'card_id' => $card->id,
+        'provider' => ApiProvider::Generic,
+        'base_url' => 'https://example.test/api',
+    ]);
+
+    Livewire::test('card-api-widget', ['card' => $card, 'linked' => true])
+        ->assertSeeHtml('href="http://sonarr.lan"')
+        ->assertSeeHtml('aria-label="Open Sonarr"');
+
+    Livewire::test('card-api-widget', ['card' => $card])
+        ->assertDontSeeHtml('href="http://sonarr.lan"');
+});
+
 it('shows an actionable error instead of crashing when the api key cannot be decrypted', function () {
     $card = Card::factory()->create(['type' => CardType::Api]);
     $api = CardApi::factory()->create([

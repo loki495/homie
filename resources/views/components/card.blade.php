@@ -73,28 +73,26 @@
         </div>
     @elseif ($card->type === \App\Enums\CardType::Api)
         @php
-            $apiCardClasses = 'block rounded-lg border border-slate-200 bg-white p-5 sm:p-4 dark:border-slate-700 dark:bg-slate-800'.($editing ? ' opacity-75' : '');
+            $apiCardClasses = 'block rounded-lg border border-slate-200 bg-white p-5 sm:p-4 dark:border-slate-700 dark:bg-slate-800'.($editing ? ' opacity-75' : ' cursor-pointer');
         @endphp
-        @if ($editing)
-            <div class="{{ $apiCardClasses }}">
-                <div class="flex items-center gap-2.5">
-                    @if ($card->icon)
-                        <x-card-icon :src="$card->icon" class="h-7 w-7 shrink-0 sm:h-5 sm:w-5 object-contain" />
-                    @endif
-                    <h3 class="truncate text-base font-semibold sm:text-sm text-slate-700 dark:text-slate-200">{{ $card->name }}</h3>
-                </div>
-                <livewire:card-api-widget :card="$card" :key="'card-api-'.$card->id" lazy />
+        {{-- Tapping the card expands it (see the wrapper in dashboard.blade.php, which owns the state and
+             the full-row span) so a phone-sized card can show its untruncated text; the arrow keeps the
+             one-tap path to the service. --}}
+        <div
+            class="{{ $apiCardClasses }}"
+            @unless ($editing)
+                x-on:click="expanded = ! expanded"
+                x-bind:class="expanded && 'ring-2 ring-teal-600/40 dark:ring-teal-500/40'"
+                x-bind:data-expanded="expanded ? 'true' : null"
+            @endunless
+        >
+            <div class="flex items-center gap-2.5">
+                @if ($card->icon)
+                    <x-card-icon :src="$card->icon" class="h-7 w-7 shrink-0 sm:h-5 sm:w-5 object-contain" />
+                @endif
+                <h3 class="min-w-0 flex-1 truncate text-base font-semibold sm:text-sm text-slate-700 dark:text-slate-200">{{ $card->name }}</h3>
             </div>
-        @else
-            <a href="{{ $card->url }}" target="_blank" rel="noopener" class="{{ $apiCardClasses }}">
-                <div class="flex items-center gap-2.5">
-                    @if ($card->icon)
-                        <x-card-icon :src="$card->icon" class="h-7 w-7 shrink-0 sm:h-5 sm:w-5 object-contain" />
-                    @endif
-                    <h3 class="truncate text-base font-semibold sm:text-sm text-slate-700 dark:text-slate-200">{{ $card->name }}</h3>
-                </div>
-                <livewire:card-api-widget :card="$card" :key="'card-api-'.$card->id" lazy />
-            </a>
-        @endif
+            <livewire:card-api-widget :card="$card" :linked="! $editing" :key="'card-api-'.$card->id" lazy />
+        </div>
     @endif
 </div>

@@ -284,6 +284,8 @@ new class extends Component
                     >
                         @foreach ($group->cards as $cardIndex => $card)
                             <div
+                                x-data="{ expanded: false }"
+                                x-bind:class="expanded ? 'col-span-full sm:col-span-1' : ''"
                                 @if ($editing)
                                     draggable="true"
                                     x-on:dragstart.stop="dragCardIndex = {{ $cardIndex }}"
@@ -318,6 +320,8 @@ new class extends Component
             >
                 @foreach ($ungroupedCards as $cardIndex => $card)
                     <div
+                        x-data="{ expanded: false }"
+                        x-bind:class="expanded ? 'col-span-full sm:col-span-1' : ''"
                         @if ($editing)
                             draggable="true"
                             x-on:dragstart="dragCardIndex = {{ $cardIndex }}"

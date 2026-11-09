@@ -7,6 +7,9 @@ new class extends Component
 {
     public Card $card;
 
+    /** Whether to show the arrow that opens the card's service; off while arranging the dashboard. */
+    public bool $linked = false;
+
     public ?string $status = null;
 
     public ?string $summary = null;
@@ -53,7 +56,19 @@ new class extends Component
 ?>
 
 <div>
-    <div class="flex justify-end">
+    <div class="flex items-center justify-end gap-1.5">
+        @if ($linked)
+            <a
+                href="{{ $card->url }}"
+                target="_blank"
+                rel="noopener"
+                x-on:click.stop
+                aria-label="Open {{ $card->name }}"
+                class="-my-1 rounded p-1 text-slate-400 transition hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300"
+            >
+                <flux:icon.arrow-up-right class="size-4" />
+            </a>
+        @endif
         <span @class([
             'h-2 w-2 rounded-full',
             'bg-emerald-500' => $status === 'ok',
@@ -87,7 +102,7 @@ new class extends Component
                         @foreach ($downloaded as $item)
                             <li class="flex items-baseline justify-between gap-2 text-xs text-slate-500 dark:text-slate-400">
                                 <span class="min-w-0 truncate" title="{{ $item['name'] }}">{{ $item['name'] }}</span>
-                                <span class="shrink-0 text-slate-400 dark:text-slate-500">{{ $item['at'] }}</span>
+                                <span class="shrink-0 whitespace-nowrap text-slate-400 dark:text-slate-500">{{ $item['at'] }}</span>
                             </li>
                         @endforeach
                     </ul>
@@ -105,7 +120,7 @@ new class extends Component
                         @foreach ($deleted as $item)
                             <li class="flex items-baseline justify-between gap-2 text-xs text-slate-500 dark:text-slate-400">
                                 <span class="min-w-0 truncate" title="{{ $item['name'] }}">{{ $item['name'] }}</span>
-                                <span class="shrink-0 text-slate-400 dark:text-slate-500">{{ $item['at'] }}</span>
+                                <span class="shrink-0 whitespace-nowrap text-slate-400 dark:text-slate-500">{{ $item['at'] }}</span>
                             </li>
                         @endforeach
                     </ul>

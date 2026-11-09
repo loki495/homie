@@ -10,12 +10,14 @@ use App\Models\Group;
 use Illuminate\Support\Facades\Process;
 use Livewire\Livewire;
 
-it('wraps api cards in a link to their url outside arrange mode', function () {
-    $card = Card::factory()->create(['type' => CardType::Api, 'url' => 'http://sonarr.lan']);
+it('lets an api card expand on tap outside arrange mode', function () {
+    $card = Card::factory()->create(['type' => CardType::Api, 'name' => 'Sonarr', 'url' => 'http://sonarr.lan']);
     CardApi::factory()->create(['card_id' => $card->id, 'base_url' => 'http://sonarr.lan']);
 
     Livewire::test('dashboard')
-        ->assertSeeHtml('href="http://sonarr.lan"');
+        ->assertSeeHtml('x-on:click="expanded = ! expanded"')
+        ->assertSeeHtml('x-bind:data-expanded="expanded ? \'true\' : null"')
+        ->assertSeeHtml("expanded ? 'col-span-full sm:col-span-1' : ''");
 });
 
 it('shows the demo info panel, with the mock api urls, in demo mode', function () {

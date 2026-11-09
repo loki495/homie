@@ -16,7 +16,7 @@ beforeEach(function () {
 it('renders the dashboard in a real browser', function () {
     $page = visit('/');
 
-    $page->assertSee('No cards yet');
+    $page->assertSee('No cards yet')->assertNoJavaScriptErrors();
 });
 
 it('renders a card once one exists', function () {
@@ -40,5 +40,6 @@ it('expands an api card on a tap at a phone viewport', function () {
         ->click('Prowlarr')
         ->assertScript("document.querySelector('[data-expanded]').getAttribute('data-expanded')", 'true')
         ->click('Prowlarr')
-        ->assertScript("document.querySelector('[data-expanded]')", null);
+        ->assertScript("document.querySelector('[data-expanded]')", null)
+        ->assertNoJavaScriptErrors();
 });
